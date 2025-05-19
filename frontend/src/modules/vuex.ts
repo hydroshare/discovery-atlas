@@ -1,10 +1,10 @@
-import { createStore } from "vuex";
-import VuexORM from "@vuex-orm/core";
-import createPersistedState from "vuex-persistedstate";
-import { orm } from "@/models/orm";
-import { persistedPaths } from "@/models/persistedPaths";
-import type { UserModule } from "@/types";
-import { APP_NAME } from "@/constants";
+import type { UserModule } from '@/types'
+import { APP_NAME } from '@/constants'
+import { orm } from '@/models/orm'
+import { persistedPaths } from '@/models/persistedPaths'
+import VuexORM from '@vuex-orm/core'
+import { createStore } from 'vuex'
+import createPersistedState from 'vuex-persistedstate'
 
 export const install: UserModule = ({ app }) => {
   // Create Vuex Store and register database through Vuex ORM.
@@ -14,7 +14,7 @@ export const install: UserModule = ({ app }) => {
       VuexORM.install(orm),
       createPersistedState({
         paths: persistedPaths,
-        key: APP_NAME || "HydroShare catalog",
+        key: APP_NAME || 'HydroShare catalog',
       }),
     ],
     // state() {
@@ -27,8 +27,8 @@ export const install: UserModule = ({ app }) => {
     //     state.count++
     //   },
     // },
-  });
+  })
 
   // Install the store instance as a plugin
-  app.use(store);
-};
+  app.use(store)
+}

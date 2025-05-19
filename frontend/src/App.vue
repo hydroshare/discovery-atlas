@@ -1,25 +1,127 @@
+<script lang="ts">
+import type { Subscription } from 'rxjs'
+import type { RouteLocationRaw } from 'vue-router'
+import CzLogin from '@/components/account/cz.login.vue'
+import User from '@/models/user.model'
+import { CzNotifications, Notifications } from '@cznethub/cznet-vue-core'
+import { Component, toNative, Vue } from 'vue-facing-decorator'
+import { useRoute, useRouter } from 'vue-router'
+import { APP_NAME } from './constants'
+import { addRouteTags } from './modules/router'
+
+@Component({
+  name: 'app',
+  components: { CzNotifications, CzLogin },
+})
+class App extends Vue {
+  route = useRoute()
+  router = useRouter()
+  protected onOpenLogInDialog!: Subscription
+  public showMobileNavigation = false
+  protected logInDialog: any & { isActive: boolean } = {
+    isActive: false,
+    onLoggedIn: () => {},
+    onCancel: () => {},
+  }
+
+  public paths: any[] = [
+    {
+      attrs: { to: '/home' },
+      label: 'Home',
+      icon: 'mdi-home',
+    },
+    {
+      attrs: { to: '/my-resources' },
+      label: 'My Resources',
+      icon: 'mdi-home',
+    },
+    {
+      attrs: { to: '/discover' },
+      label: 'Discover',
+      icon: 'mdi-home',
+    },
+    {
+      attrs: { to: '/apps' },
+      label: 'Apps',
+      icon: 'mdi-home',
+    },
+    {
+      attrs: { to: '/help' },
+      label: 'Help',
+      icon: 'mdi-home',
+    },
+  ]
+
+  protected get isLoggedIn(): boolean {
+    return User.$state.isLoggedIn
+  }
+
+  protected logOut() {
+    Notifications.openDialog({
+      title: 'Log out?',
+      content: 'Are you sure you want to log out?',
+      confirmText: 'Log Out',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        User.logOut()
+      },
+    })
+  }
+
+  async created() {
+    document.title = APP_NAME
+    addRouteTags(this.route, this.route)
+
+    // User.fetchSchemas();
+
+    this.onOpenLogInDialog = User.logInDialog$.subscribe(
+      (redirectTo?: RouteLocationRaw) => {
+        this.logInDialog.isActive = true
+
+        this.logInDialog.onLoggedIn = () => {
+          if (redirectTo)
+            this.router.push(redirectTo).catch(() => {})
+
+          this.logInDialog.isActive = false
+        }
+      },
+    )
+  }
+
+  beforeDestroy() {
+    // Good practice
+    this.onOpenLogInDialog.unsubscribe()
+  }
+
+  protected openLogInDialog() {
+    User.openLogInDialog()
+  }
+}
+export default toNative(App)
+</script>
+
 <template>
   <v-app app>
     <v-app-bar
       v-if="!$route.meta.hideNavigation"
-      ref="appBar"
       id="app-bar"
+      ref="appBar"
       elevate-on-scroll
       fixed
       app
     >
       <v-container class="d-flex align-end full-height pa-0 align-center">
         <router-link :to="{ path: `/` }" class="logo">
-          <img :src="'/img/hydroshare.png'" alt="HydroShare" />
+          <img src="/img/hydroshare.png" alt="HydroShare">
         </router-link>
-        <div class="spacer"></div>
+        <div class="spacer" />
         <div v-if="!$vuetify.display.mdAndDown" class="d-flex gap-1 ml-6">
           <v-btn
-            color="black"
             v-for="path of paths"
-            :key="path.attrs.to || path.attrs.href"
             v-bind="path.attrs"
             :id="`navbar-nav-${path.label.replaceAll(/[\/\s]/g, ``)}`"
+            :key="path.attrs.to || path.attrs.href"
+            color="black"
             :elevation="0"
             active-class="primary"
             :class="path.isActive?.() ? 'primary' : ''"
@@ -28,7 +130,7 @@
           </v-btn>
         </div>
 
-        <v-spacer></v-spacer>
+        <v-spacer />
 
         <template v-if="!$vuetify.display.mdAndDown">
           <v-btn
@@ -93,7 +195,7 @@
     <v-main app>
       <v-container id="main-container">
         <v-sheet min-height="70vh">
-          <router-view name="content" :key="$route.fullPath" />
+          <router-view :key="$route.fullPath" name="content" />
         </v-sheet>
       </v-container>
     </v-main>
@@ -142,7 +244,9 @@
               showMobileNavigation = false;
             "
           >
-            <v-icon class="mr-2"> mdi-login </v-icon>
+            <v-icon class="mr-2">
+              mdi-login
+            </v-icon>
             <span>Log In</span>
           </v-list-item>
 
@@ -178,113 +282,13 @@
     <link
       href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900"
       rel="stylesheet"
-    />
+    >
     <link
       href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css"
       rel="stylesheet"
-    />
+    >
   </v-app>
 </template>
-
-<script lang="ts">
-import { Component, Vue, toNative } from "vue-facing-decorator";
-import { APP_NAME } from "./constants";
-import { CzNotifications, Notifications } from "@cznethub/cznet-vue-core";
-import { Subscription } from "rxjs";
-import User from "@/models/user.model";
-import CzLogin from "@/components/account/cz.login.vue";
-import { addRouteTags } from "./modules/router";
-import { useRoute, RouteLocationRaw } from "vue-router";
-import { useRouter } from "vue-router";
-
-@Component({
-  name: "app",
-  components: { CzNotifications, CzLogin },
-})
-class App extends Vue {
-  route = useRoute();
-  router = useRouter();
-  protected onOpenLogInDialog!: Subscription;
-  public showMobileNavigation = false;
-  protected logInDialog: any & { isActive: boolean } = {
-    isActive: false,
-    onLoggedIn: () => {},
-    onCancel: () => {},
-  };
-  public paths: any[] = [
-    {
-      attrs: { to: "/home" },
-      label: "Home",
-      icon: "mdi-home",
-    },
-    {
-      attrs: { to: "/my-resources" },
-      label: "My Resources",
-      icon: "mdi-home",
-    },
-    {
-      attrs: { to: "/discover" },
-      label: "Discover",
-      icon: "mdi-home",
-    },
-    {
-      attrs: { to: "/apps" },
-      label: "Apps",
-      icon: "mdi-home",
-    },
-    {
-      attrs: { to: "/help" },
-      label: "Help",
-      icon: "mdi-home",
-    },
-  ];
-
-  protected get isLoggedIn(): boolean {
-    return User.$state.isLoggedIn;
-  }
-
-  protected logOut() {
-    Notifications.openDialog({
-      title: "Log out?",
-      content: "Are you sure you want to log out?",
-      confirmText: "Log Out",
-      cancelText: "Cancel",
-      onConfirm: () => {
-        User.logOut();
-      },
-    });
-  }
-
-  async created() {
-    document.title = APP_NAME;
-    addRouteTags(this.route, this.route);
-
-    // User.fetchSchemas();
-
-    this.onOpenLogInDialog = User.logInDialog$.subscribe(
-      (redirectTo?: RouteLocationRaw) => {
-        this.logInDialog.isActive = true;
-
-        this.logInDialog.onLoggedIn = () => {
-          if (redirectTo) this.router.push(redirectTo).catch(() => {});
-
-          this.logInDialog.isActive = false;
-        };
-      },
-    );
-  }
-
-  beforeDestroy() {
-    // Good practice
-    this.onOpenLogInDialog.unsubscribe();
-  }
-
-  protected openLogInDialog() {
-    User.openLogInDialog();
-  }
-}
-export default toNative(App);
-</script>
 
 <style lang="scss" scoped>
 .logo {

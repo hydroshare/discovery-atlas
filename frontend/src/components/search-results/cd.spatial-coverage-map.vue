@@ -1,76 +1,70 @@
-<template>
-  <v-card class="cd-spatial-coverage-map">
-    <div ref="map" class="map-container"></div>
-  </v-card>
-</template>
-
 <script lang="ts">
-import { Component, Vue, Prop, Ref, toNative } from "vue-facing-decorator";
-import { Loader, LoaderOptions } from "google-maps";
+import type { Loader, LoaderOptions } from 'google-maps'
+import { Component, Prop, Ref, toNative, Vue } from 'vue-facing-decorator'
 
-const DEFAULT_ZOOM = 5;
+const DEFAULT_ZOOM = 5
 
 @Component({
-  name: "cd-spatial-coverage-map",
+  name: 'cd-spatial-coverage-map',
   components: {},
 })
 class CdSpatialCoverageMap extends Vue {
-  @Prop() feature!: any;
-  @Prop() loader!: Loader;
-  @Prop() loaderOptions!: LoaderOptions;
+  @Prop() feature!: any
+  @Prop() loader!: Loader
+  @Prop() loaderOptions!: LoaderOptions
 
-  @Ref("map") mapContainer;
-  protected map: google.maps.Map | null = null;
-  protected markers: google.maps.Marker[] = [];
-  protected rectangles: google.maps.Rectangle[] = [];
-  protected markerOptions: google.maps.MarkerOptions = {};
-  protected rectangleOptions: google.maps.RectangleOptions = {};
+  @Ref('map') mapContainer
+  protected map: google.maps.Map | null = null
+  protected markers: google.maps.Marker[] = []
+  protected rectangles: google.maps.Rectangle[] = []
+  protected markerOptions: google.maps.MarkerOptions = {}
+  protected rectangleOptions: google.maps.RectangleOptions = {}
 
   async mounted() {
-    await this.initMap();
-    this.loadDrawing();
+    await this.initMap()
+    this.loadDrawing()
     if (this.map) {
-      const bounds = new google.maps.LatLngBounds();
+      const bounds = new google.maps.LatLngBounds()
       this.markers.forEach((marker) => {
-        const pos = marker.getPosition() as google.maps.LatLng;
-        bounds.extend(new google.maps.LatLng(pos.lat(), pos.lng()));
-      });
+        const pos = marker.getPosition() as google.maps.LatLng
+        bounds.extend(new google.maps.LatLng(pos.lat(), pos.lng()))
+      })
 
-      this.map.fitBounds(bounds);
+      this.map.fitBounds(bounds)
 
       if (this.markers.length === 1) {
         // For single point coverages, use default zoom
-        const map = this.map;
+        const map = this.map
         setTimeout(() => {
-          map.setZoom(DEFAULT_ZOOM);
-        }, 100);
+          map.setZoom(DEFAULT_ZOOM)
+        }, 100)
       }
 
       // TODO: check if this overrides the marker bounds
       this.rectangles.forEach((rectangle) => {
-        this.map?.fitBounds(rectangle.getBounds());
-      });
+        this.map?.fitBounds(rectangle.getBounds())
+      })
     }
   }
 
   created() {}
 
   protected async initMap() {
-    const google = await this.loader.load();
+    const google = await this.loader.load()
 
     this.map = new google.maps.Map(this.mapContainer, {
       center: { lat: 39.8097343, lng: -98.5556199 },
       zoom: DEFAULT_ZOOM,
-      gestureHandling: "greedy",
-    });
+      gestureHandling: 'greedy',
+    })
 
     // Icon base from: http://kml4earth.appspot.com/icons.html
-    const iconBase = "http://earth.google.com/images/kml-icons/";
+    const iconBase = 'http://earth.google.com/images/kml-icons/'
     const icons = {
       track_directional: {
-        icon: iconBase + "track-directional/track-8.png",
+        icon: `${iconBase}track-directional/track-8.png`,
       },
-    };
+    }
 
     this.markerOptions = {
       ...this.markerOptions,
@@ -80,41 +74,42 @@ class CdSpatialCoverageMap extends Vue {
         anchor: new google.maps.Point(20, 35),
         scaledSize: new google.maps.Size(40, 40),
       },
-    };
+    }
 
     this.rectangleOptions = {
       ...this.rectangleOptions,
-      fillColor: "#1976d2",
+      fillColor: '#1976d2',
       fillOpacity: 0.25,
       strokeWeight: 2,
-      strokeColor: "#1976d2",
+      strokeColor: '#1976d2',
       editable: false,
       zIndex: 1,
       draggable: false,
-    };
+    }
   }
 
   protected loadDrawing() {
     if (this.feature) {
-      if (this.feature["type"] === "GeoCoordinates") {
+      if (this.feature.type === 'GeoCoordinates') {
         const point: google.maps.ReadonlyLatLngLiteral = {
           lat: this.feature.latitude,
           lng: this.feature.longitude,
-        } as google.maps.ReadonlyLatLngLiteral;
-        this.loadMarkers([point]);
-      } else if (this.feature["type"] === "GeoShape") {
+        } as google.maps.ReadonlyLatLngLiteral
+        this.loadMarkers([point])
+      }
+      else if (this.feature.type === 'GeoShape') {
         const extents = this.feature.box
           .trim()
-          .split(" ")
-          .map((n) => +n);
+          .split(' ')
+          .map(n => +n)
         if (extents.length === 4) {
           const rectangle: google.maps.LatLngBoundsLiteral = {
             north: extents[0],
             east: extents[1],
             south: extents[2],
             west: extents[3],
-          } as google.maps.LatLngBoundsLiteral;
-          this.loadRectangles([rectangle]);
+          } as google.maps.LatLngBoundsLiteral
+          this.loadRectangles([rectangle])
         }
       }
     }
@@ -123,55 +118,61 @@ class CdSpatialCoverageMap extends Vue {
   protected clearMarkers() {
     if (this.markers.length) {
       this.markers.forEach((m) => {
-        m.setMap(null);
-      });
-      this.markers = [];
+        m.setMap(null)
+      })
+      this.markers = []
     }
   }
 
   protected loadMarkers(markers: google.maps.ReadonlyLatLngLiteral[]) {
     if (this.map) {
-      this.clearMarkers();
+      this.clearMarkers()
 
       markers.forEach((m) => {
         const marker = new google.maps.Marker({
           ...this.markerOptions,
           position: { lat: m.lat, lng: m.lng },
           map: this.map as google.maps.Map,
-        });
+        })
 
-        this.markers.push(marker);
-      });
+        this.markers.push(marker)
+      })
     }
   }
 
   protected clearRectangles() {
     if (this.rectangles.length) {
       this.rectangles.forEach((r) => {
-        r.setMap(null);
-      });
-      this.rectangles = [];
+        r.setMap(null)
+      })
+      this.rectangles = []
     }
   }
 
   protected loadRectangles(rectangles: google.maps.LatLngBoundsLiteral[]) {
     if (this.map) {
-      this.clearRectangles();
+      this.clearRectangles()
 
       rectangles.forEach((r) => {
         const rectangle = new google.maps.Rectangle({
           ...this.rectangleOptions,
           bounds: r,
           map: this.map as google.maps.Map,
-        });
+        })
 
-        this.rectangles.push(rectangle);
-      });
+        this.rectangles.push(rectangle)
+      })
     }
   }
 }
-export default toNative(CdSpatialCoverageMap);
+export default toNative(CdSpatialCoverageMap)
 </script>
+
+<template>
+  <v-card class="cd-spatial-coverage-map">
+    <div ref="map" class="map-container" />
+  </v-card>
+</template>
 
 <style lang="scss" scoped>
 .map-container {

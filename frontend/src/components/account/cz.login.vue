@@ -1,3 +1,28 @@
+<script lang="ts">
+import User from '@/models/user.model'
+import { Component, toNative, Vue } from 'vue-facing-decorator'
+
+@Component({
+  name: 'cz-login',
+  components: {},
+})
+class CzLogin extends Vue {
+  protected async openLogInDialog() {
+    User.logIn(this.onLoggedIn)
+  }
+
+  protected onCancel() {
+    this.$emit('cancel')
+  }
+
+  protected onLoggedIn() {
+    this.$emit('logged-in')
+  }
+}
+
+export default toNative(CzLogin)
+</script>
+
 <template>
   <v-card class="cd-login">
     <v-card-title>Log In</v-card-title>
@@ -13,48 +38,27 @@
         <a href="https://orcid.org" target="_blank">https://orcid.org</a> to
         register and get your unique ORCID iD.
       </p>
-      <img :src="require('@/assets/img/orcid.png')" alt="ORCID" />
+      <img :src="require('@/assets/img/orcid.png')" alt="ORCID">
     </v-card-text>
-    <v-divider></v-divider>
+    <v-divider />
     <v-card-actions>
-      <v-spacer></v-spacer>
-      <v-btn @click="onCancel">Cancel</v-btn>
+      <v-spacer />
+      <v-btn @click="onCancel">
+        Cancel
+      </v-btn>
       <v-btn
         id="orcid_login_continue"
-        @click="openLogInDialog()"
         color="primary"
+        @click="openLogInDialog()"
       >
-        <v-icon class="mr-2">fab fa-orcid</v-icon>
+        <v-icon class="mr-2">
+          fab fa-orcid
+        </v-icon>
         <span>Log In Using ORCID</span>
       </v-btn>
     </v-card-actions>
   </v-card>
 </template>
-
-<script lang="ts">
-import { Component, Vue, toNative } from "vue-facing-decorator";
-import User from "@/models/user.model";
-
-@Component({
-  name: "cz-login",
-  components: {},
-})
-class CzLogin extends Vue {
-  protected async openLogInDialog() {
-    User.logIn(this.onLoggedIn);
-  }
-
-  protected onCancel() {
-    this.$emit("cancel");
-  }
-
-  protected onLoggedIn() {
-    this.$emit("logged-in");
-  }
-}
-
-export default toNative(CzLogin);
-</script>
 
 <style lang="scss" scoped>
 :deep(.v-card__text img) {

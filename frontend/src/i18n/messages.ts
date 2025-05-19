@@ -23,11 +23,11 @@ export const messages = {
     },
     searchResults: {
       filters: {
-        projectLabel: "CZ Project",
+        projectLabel: 'CZ Project',
       },
     },
     footer: {
-      supportEmail: "example@example.com",
+      supportEmail: 'example@example.com',
     },
   },
-};
+}

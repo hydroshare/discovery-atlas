@@ -3,10 +3,9 @@ import mimetypes
 from datetime import datetime
 from typing import Optional
 
+from config import get_settings
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ValidationInfo, field_validator, model_validator
-
-from config import get_settings
 
 router = APIRouter()
 
@@ -221,7 +220,9 @@ class SearchQuery(BaseModel):
         compound = {'filter': self._filters, 'must': self._must}
 
         if self.term:
-            compound['should'] = [{'autocomplete': {'query': self.term, 'path': key, 'fuzzy': {'maxEdits': 1}}} for key in searchPaths]
+            compound['should'] = [
+                {'autocomplete': {'query': self.term, 'path': key, 'fuzzy': {'maxEdits': 1}}} for key in searchPaths
+            ]
 
         search_stage = {
             '$search': {
@@ -262,8 +263,14 @@ async def search(request: Request, search_query: SearchQuery = Depends()):
 
 async def aggregate_stages(request, stages, pageNumber=1, pageSize=30):
     # Insert a `$facet` stage to extract the total count. We specify pagination here too.
-    stages.append({"$facet": {"docs": [{"$skip": (pageNumber - 1) * pageSize},
-                                       {"$limit": pageSize}], "totalCount": [{"$count": 'count'}]}})
+    stages.append(
+        {
+            "$facet": {
+                "docs": [{"$skip": (pageNumber - 1) * pageSize}, {"$limit": pageSize}],
+                "totalCount": [{"$count": 'count'}],
+            }
+        }
+    )
 
     aggregation = await request.app.mongodb["discovery"].aggregate(stages).to_list(None)
     total_count = aggregation[0]["totalCount"][0]["count"] if len(aggregation[0]["totalCount"]) else None
@@ -314,4 +321,3 @@ def to_associated_media(file):
         "sha256": file.checksum,
         "encodingFormat": mime_type,
     }
-

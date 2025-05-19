@@ -1,22 +1,22 @@
-import { Model } from "@vuex-orm/core";
-import { INITIAL_RANGE } from "@/constants";
+import { INITIAL_RANGE } from '@/constants'
+import { Model } from '@vuex-orm/core'
 
 export interface ISearchResultsState {
-  publicationYear: [number, number];
-  dataCoverage: [number, number];
-  creationDate: [number, number];
-  panels: number[];
+  publicationYear: [number, number]
+  dataCoverage: [number, number]
+  creationDate: [number, number]
+  panels: number[]
 }
 
 export default class SearchResults extends Model {
-  static entity = "search-results";
+  static entity = 'search-results'
 
   static fields() {
-    return {};
+    return {}
   }
 
   static get $state(): ISearchResultsState {
-    return this.store().state.entities[this.entity];
+    return this.store().state.entities[this.entity]
   }
 
   static state(): ISearchResultsState {
@@ -25,6 +25,6 @@ export default class SearchResults extends Model {
       dataCoverage: INITIAL_RANGE,
       creationDate: INITIAL_RANGE,
       panels: [],
-    };
+    }
   }
 }

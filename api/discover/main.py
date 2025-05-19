@@ -1,10 +1,10 @@
 import os
 import subprocess
 
-from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from discover.app.routers.discovery import router as discovery_router
 from discover.config import get_settings
@@ -35,8 +35,8 @@ app.include_router(
     tags=["discovery"],
 )
 
+
 @app.on_event("startup")
 async def on_startup():
     app.db = AsyncIOMotorClient(get_settings().mongo_url)
     app.mongodb = app.db[get_settings().mongo_database]
-
