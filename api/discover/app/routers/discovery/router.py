@@ -279,16 +279,16 @@ class SearchQuery(BaseModel):
 
         if self.paginationToken:
             search_stage["$search"]['searchAfter'] = self.paginationToken
-        
-        order = 1 if self.order == "asc" else - 1
-        
+
+        order = 1 if self.order == "asc" else -1
+
         # These sorts can occur inside the $search stage
         if self.sortBy == "name":
             search_stage["$search"]['sort'] = {"name": order}
         elif self.sortBy == "dateCreated":
             search_stage["$search"]['sort'] = {"dateCreated": order}
         elif self.sortBy == "lastModified":
-            search_stage["$search"]['sort'] = {"lastModified": order}
+            search_stage["$search"]['sort'] = {"dateModified": order}
 
         stages.append(search_stage)
 
@@ -305,9 +305,6 @@ class SearchQuery(BaseModel):
             set_stage['$set']['paginationToken'] = { "$meta" : "searchSequenceToken" } # searchSequenceToken cannot be used with $sort stage
 
         stages.append(set_stage)
-
-        # TODO: To exclude resource level metadata documents for now.
-        stages.append({'$match': {"dateCreated": {"$not": {"$eq": None}}}})
 
         if self.term or self.creatorName or self.contributorName or self.keyword or self.contributorName:
             # get only results which meet minimum relevance score threshold
