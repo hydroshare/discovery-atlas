@@ -96,6 +96,10 @@ class SearchQuery(BaseModel):
     @property
     def _filters(self):
         filters = []
+
+        # filter out aggregation type documents - aggregation types do not have a value for dateCreated
+        filters.append({'compound': {'mustNot': [{'equals': {'path': 'dateCreated', 'value': None}}]}})
+
         if self.publishedStart:
             filters.append(
                 {
