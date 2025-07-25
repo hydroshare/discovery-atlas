@@ -246,27 +246,49 @@ class SearchQuery(BaseModel):
         # The term is searched for in name, description, keywords and creator name
         # TODO: should the term be searched for in all fields?
         if self.term:
-            compound['should'] = [
-                # https://www.mongodb.com/docs/atlas/atlas-search/score/modify-score/#std-label-scoring-boost
-                {'autocomplete': {'query': self.term, 'path': 'name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
-                {'autocomplete': {'query': self.term, 'path': 'description', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}},
-                {'autocomplete': {'query': self.term, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}},
-                {'autocomplete': {'query': self.term, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
-            ]
+            if not self.sortBy:
+                # Only apply scoring/boosting when not sorting, since sorting overrides relevance scoring
+                compound['should'] = [
+                    # https://www.mongodb.com/docs/atlas/atlas-search/score/modify-score/#std-label-scoring-boost
+                    {'autocomplete': {'query': self.term, 'path': 'name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
+                    {'autocomplete': {'query': self.term, 'path': 'description', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}},
+                    {'autocomplete': {'query': self.term, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}},
+                    {'autocomplete': {'query': self.term, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
+                ]
+            else:
+                # When sorting, use simple autocomplete without scoring/boosting
+                compound['should'] = [
+                    {'autocomplete': {'query': self.term, 'path': 'name', 'fuzzy': {'maxEdits': 1}}},
+                    {'autocomplete': {'query': self.term, 'path': 'description', 'fuzzy': {'maxEdits': 1}}},
+                    {'autocomplete': {'query': self.term, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}}},
+                    {'autocomplete': {'query': self.term, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}}},
+                ]
         
         # Dedicated input filters boost the score further if matched.
         if self.creatorName:
-            compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}})
+            if not self.sortBy:
+                compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}})
+            else:
+                compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}}})
 
         if self.contributorName:
-            compound['should'].append({'autocomplete': {'query': self.contributorName, 'path': 'contributor.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}})
+            if not self.sortBy:
+                compound['should'].append({'autocomplete': {'query': self.contributorName, 'path': 'contributor.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}})
+            else:
+                compound['should'].append({'autocomplete': {'query': self.contributorName, 'path': 'contributor.name', 'fuzzy': {'maxEdits': 1}}})
 
         if self.keyword:
-            compound['should'].append( {'autocomplete': {'query': self.keyword, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}})
+            if not self.sortBy:
+                compound['should'].append( {'autocomplete': {'query': self.keyword, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}})
+            else:
+                compound['should'].append( {'autocomplete': {'query': self.keyword, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}}})
 
         if self.fundingFunderName:
-            compound['should'].append({'autocomplete': {'query': self.fundingFunderName, 'path': 'funding.funder.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}})
-
+            if not self.sortBy:
+                compound['should'].append({'autocomplete': {'query': self.fundingFunderName, 'path': 'funding.funder.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}})
+            else:
+                compound['should'].append({'autocomplete': {'query': self.fundingFunderName, 'path': 'funding.funder.name', 'fuzzy': {'maxEdits': 1}}})
+        
         search_stage = {
             '$search': {
                 'index': 'fuzzy_search',
@@ -282,7 +304,7 @@ class SearchQuery(BaseModel):
 
         order = 1 if self.order == "asc" else -1
 
-        # These sorts can occur inside the $search stage
+        # These sorts can occur inside the $search stage - these should be fast
         if self.sortBy == "name":
             search_stage["$search"]['sort'] = {"name": order}
         elif self.sortBy == "dateCreated":
@@ -293,23 +315,30 @@ class SearchQuery(BaseModel):
         stages.append(search_stage)
 
         set_stage = {'$set': {
-            'score': {'$meta': 'searchScore'},
             'highlights': {'$meta': 'searchHighlights'}
         }}
+
+        # When sorting, assign uniform score of 1 since sorting overrides relevance scoring
+        if self.sortBy:
+            set_stage['$set']['score'] = 1
+        else:
+            set_stage['$set']['score'] = {'$meta': 'searchScore'}
 
         # Sorting using an index for an array item requires a $sort stage. https://www.mongodb.com/docs/atlas/atlas-search/sort/#sort-option-limitations
         # Important to sort before appending paginationToken
         if self.sortBy == "creatorName":
-            stages.append({ "$sort": {"creator.0.name": order}})
+            # this sort is slow as this is not part of the search stage
+            # we should add a field 'firstAuthor' to the metadata document and store the first author name there for sorting
+            stages.append({"$sort": {"creator.0.name": order}})
         else:
             set_stage['$set']['paginationToken'] = { "$meta" : "searchSequenceToken" } # searchSequenceToken cannot be used with $sort stage
 
         stages.append(set_stage)
 
-        if self.term or self.creatorName or self.contributorName or self.keyword or self.contributorName:
-            # get only results which meet minimum relevance score threshold
-            stages.append({'$match': {'score': {'$gt': get_settings().search_relevance_score_threshold}}})
-
+        # Only apply relevance score threshold when not sorting
+        if not self.sortBy:
+            if self.term or self.creatorName or self.contributorName or self.keyword or self.contributorName:
+                stages.append({'$match': {'score': {'$gt': get_settings().search_relevance_score_threshold}}})
         return stages
 
 
