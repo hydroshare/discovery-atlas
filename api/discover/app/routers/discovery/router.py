@@ -300,6 +300,8 @@ class SearchQuery(BaseModel):
         # Sorting using an index for an array item requires a $sort stage. https://www.mongodb.com/docs/atlas/atlas-search/sort/#sort-option-limitations
         # Important to sort before appending paginationToken
         if self.sortBy == "creatorName":
+            # this sorting is very slow as it is not part of the search stage as a result not using the index
+            # we should add a field 'firstAuthrorName' to the document that is the first creator name and index it for sorting
             stages.append({ "$sort": {"creator.0.name": order}})
         else:
             set_stage['$set']['paginationToken'] = { "$meta" : "searchSequenceToken" } # searchSequenceToken cannot be used with $sort stage
