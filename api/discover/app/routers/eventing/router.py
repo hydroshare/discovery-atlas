@@ -84,6 +84,7 @@ async def resource_collect(request: Request, cloud_storage_message: CloudStorage
     with request.app.s3.open(filepath) as f:
         metadata_json = json.loads(f.read(), object_hook=datetime_parser)
         metadata_json['_s3_filepath'] = filepath
+        metadata_json['first_creator'] = metadata_json['creator'][0] if 'creator' in metadata_json and metadata_json['creator'] else None
     typeahead_json = {}
     typeahead_json['name'] = metadata_json['name']
     typeahead_json['description'] = metadata_json['description']
