@@ -289,6 +289,8 @@ class SearchQuery(BaseModel):
             search_stage["$search"]['sort'] = {"dateCreated": order}
         elif self.sortBy == "lastModified":
             search_stage["$search"]['sort'] = {"dateModified": order}
+        elif self.sortBy == "creatorName":
+            search_stage["$search"]['sort'] = {"first_creator.name": order}
 
         stages.append(search_stage)
 
@@ -297,21 +299,13 @@ class SearchQuery(BaseModel):
             'highlights': {'$meta': 'searchHighlights'}
         }}
         
-        if not self.sortBy == "creatorName":
-            set_stage['$set']['paginationToken'] = { "$meta" : "searchSequenceToken" } # searchSequenceToken cannot be used with $sort stage
+        set_stage['$set']['paginationToken'] = { "$meta" : "searchSequenceToken" } # searchSequenceToken cannot be used with $sort stage
 
         stages.append(set_stage)
 
         if self.term or self.creatorName or self.contributorName or self.keyword or self.contributorName:
             # get only results which meet minimum relevance score threshold
             stages.append({'$match': {'score': {'$gt': get_settings().search_relevance_score_threshold}}})
-
-        #sort-option-limitations
-        # Sorting using an index for an array item requires a $sort stage. https://www.mongodb.com/docs/atlas/atlas-search/sort/
-        if self.sortBy == "creatorName":
-            # this sorting is very slow as it is not part of the search stage as a result not using the index
-            # we should add a field 'firstAuthrorName' to the document that is the first creator name and index it for sorting
-            stages.append({ "$sort": {"creator.0.name": order}})
 
         return stages
 
