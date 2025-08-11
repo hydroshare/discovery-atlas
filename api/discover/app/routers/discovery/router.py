@@ -100,72 +100,33 @@ class SearchQuery(BaseModel):
         # filter out aggregation type documents - aggregation types do not have a value for dateCreated
         filters.append({'compound': {'mustNot': [{'equals': {'path': 'dateCreated', 'value': None}}]}})
 
-        if self.publishedStart:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'datePublished',
-                        'gte': datetime(self.publishedStart, 1, 1),
-                    },
-                }
-            )
-        if self.publishedEnd:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'datePublished',
-                        'lt': datetime(self.publishedEnd + 1, 1, 1),  # +1 to include all of the publishedEnd year
-                    },
-                }
-            )
+        # Build all date range filters
+        date_filters = []
 
-        if self.dateCreatedStart:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'dateCreated',
-                        'gte': datetime(self.dateCreatedStart, 1, 1),
-                    },
-                }
-            )
-        if self.dateCreatedEnd:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'dateCreated',
-                        'lt': datetime(self.dateCreatedEnd + 1, 1, 1),  # +1 to include all of the dateCreatedEnd year
-                    },
-                }
-            )
-
-        if self.dateModifiedStart:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'dateModified',
-                        'gte': datetime(self.dateModifiedStart, 1, 1),
-                    },
-                }
-            )
-        if self.dateModifiedEnd:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'dateModified',
-                        'lt': datetime(self.dateModifiedEnd + 1, 1, 1),  # +1 to include all of the dateModifiedEnd year
-                    },
-                }
-            )
+        # Combine each date range into single filter objects
+        for start_field, end_field, path in [
+            (self.publishedStart, self.publishedEnd, 'datePublished'),
+            (self.dateCreatedStart, self.dateCreatedEnd, 'dateCreated'),
+            (self.dateModifiedStart, self.dateModifiedEnd, 'dateModified'),
+        ]:
+            if start_field or end_field:
+                range_filter = {'path': path}
+                if start_field:
+                    range_filter['gte'] = datetime(start_field, 1, 1)
+                if end_field:
+                    range_filter['lt'] = datetime(end_field + 1, 1, 1)
+                date_filters.append({'range': range_filter})
 
         if self.dataCoverageStart:
-            filters.append(
+            date_filters.append(
                 {'range': {'path': 'temporalCoverage.startDate', 'gte': datetime(self.dataCoverageStart, 1, 1)}}
             )
         if self.dataCoverageEnd:
-            filters.append(
+            date_filters.append(
                 {'range': {'path': 'temporalCoverage.endDate', 'lt': datetime(self.dataCoverageEnd + 1, 1, 1)}}
             )
 
+        filters.extend(date_filters)
         filters.append({'term': {'path': 'type', 'query': "Dataset"}})
 
         return filters
@@ -299,7 +260,7 @@ class SearchQuery(BaseModel):
             'highlights': {'$meta': 'searchHighlights'}
         }}
         
-        set_stage['$set']['paginationToken'] = { "$meta" : "searchSequenceToken" } # searchSequenceToken cannot be used with $sort stage
+        set_stage['$set']['paginationToken'] = { "$meta" : "searchSequenceToken" }
 
         stages.append(set_stage)
 
