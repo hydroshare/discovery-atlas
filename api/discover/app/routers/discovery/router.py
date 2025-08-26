@@ -142,15 +142,25 @@ class SearchQuery(BaseModel):
         must = []
         if self.contentType and len(self.contentType) > 0:
             # Use exact term matching for each content type to ensure precise filtering
+            # Check both 'additionalType' (single value) and 'content_types' (array) fields.
             if len(self.contentType) == 1:
-                # Single content type - use term for exact match
-                must.append({'term': {'path': 'additionalType', 'query': self.contentType[0]}})
+                # Single content type - match either path exactly. Use compound should for OR.
+                must.append({
+                    'compound': {
+                        'should': [
+                            {'term': {'path': 'additionalType', 'query': self.contentType[0]}},
+                            {'term': {'path': 'content_types', 'query': self.contentType[0]}}
+                        ]
+                    }
+                })
             else:
-                # Multiple content types - use compound OR with exact term matches
-                # This ensures each content type is matched exactly, not partially
+                # Multiple content types - match any of the specified types appearing in either path.
+                # Create a single compound 'should' that includes term matches for each
+                # requested content type against both 'additionalType' and 'content_types'.
                 content_type_conditions = []
                 for content_type in self.contentType:
                     content_type_conditions.append({'term': {'path': 'additionalType', 'query': content_type}})
+                    content_type_conditions.append({'term': {'path': 'content_types', 'query': content_type}})
                 must.append({'compound': {'should': content_type_conditions}})
         if self.creatorName:
             must.append({'text': {'path': 'creator.name', 'query': self.creatorName}})
