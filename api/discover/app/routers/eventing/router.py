@@ -85,6 +85,12 @@ async def resource_collect(request: Request, cloud_storage_message: CloudStorage
         metadata_json = json.loads(f.read(), object_hook=datetime_parser)
         metadata_json['_s3_filepath'] = filepath
         metadata_json['first_creator'] = metadata_json['creator'][0] if 'creator' in metadata_json and metadata_json['creator'] else None
+        content_types = []
+        if "hasPart" in metadata_json:
+            for part in metadata_json['hasPart']:
+                content_type_metadata = request.app.mongodb["discovery"].find_one({"url": part["url"]})
+                content_types.append(content_type_metadata["additionalType"])
+            metadata_json['content_types'] = list(set(content_types))
     typeahead_json = {}
     typeahead_json['name'] = metadata_json['name']
     typeahead_json['description'] = metadata_json['description']
