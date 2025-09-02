@@ -220,6 +220,7 @@ class SearchQuery(BaseModel):
                 {'autocomplete': {'query': self.term, 'path': 'description', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}},
                 {'autocomplete': {'query': self.term, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}},
                 {'autocomplete': {'query': self.term, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
+                {'autocomplete': {'query': self.term, 'path': 'first_creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
                 {'autocomplete': {'query': self.term, 'path': 'contributor.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
             ]
         
