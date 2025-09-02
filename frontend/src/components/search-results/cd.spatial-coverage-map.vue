@@ -6,7 +6,6 @@
 
 <script lang="ts">
 import { Component, Vue, Prop, Ref, toNative } from "vue-facing-decorator";
-import { Loader, LoaderOptions } from "google-maps";
 import L from "leaflet";
 import "leaflet.fullscreen";
 
@@ -19,15 +18,7 @@ const coverageMapPointMaxZoom = 7;
 })
 class CdSpatialCoverageMap extends Vue {
   @Prop() feature!: any;
-  @Prop() loader!: Loader;
-  @Prop() loaderOptions!: LoaderOptions;
-
   @Ref("map") mapContainer!: HTMLElement;
-  protected map: google.maps.Map | null = null;
-  protected markers: google.maps.Marker[] = [];
-  protected rectangles: google.maps.Rectangle[] = [];
-  protected markerOptions: google.maps.MarkerOptions = {};
-  protected rectangleOptions: google.maps.RectangleOptions = {};
 
   protected coverageMap!: L.Map;
   protected leafletMarkers!: L.FeatureGroup<any>;
