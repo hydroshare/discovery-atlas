@@ -96,72 +96,37 @@ class SearchQuery(BaseModel):
     @property
     def _filters(self):
         filters = []
-        if self.publishedStart:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'datePublished',
-                        'gte': datetime(self.publishedStart, 1, 1),
-                    },
-                }
-            )
-        if self.publishedEnd:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'datePublished',
-                        'lt': datetime(self.publishedEnd + 1, 1, 1),  # +1 to include all of the publishedEnd year
-                    },
-                }
-            )
 
-        if self.dateCreatedStart:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'dateCreated',
-                        'gte': datetime(self.dateCreatedStart, 1, 1),
-                    },
-                }
-            )
-        if self.dateCreatedEnd:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'dateCreated',
-                        'lt': datetime(self.dateCreatedEnd + 1, 1, 1),  # +1 to include all of the dateCreatedEnd year
-                    },
-                }
-            )
+        # filter out aggregation type documents - aggregation types do not have a value for dateCreated
+        filters.append({'compound': {'mustNot': [{'equals': {'path': 'dateCreated', 'value': None}}]}})
 
-        if self.dateModifiedStart:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'dateModified',
-                        'gte': datetime(self.dateModifiedStart, 1, 1),
-                    },
-                }
-            )
-        if self.dateModifiedEnd:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'dateModified',
-                        'lt': datetime(self.dateModifiedEnd + 1, 1, 1),  # +1 to include all of the dateModifiedEnd year
-                    },
-                }
-            )
+        # Build all date range filters
+        date_filters = []
+
+        # Combine each date range into single filter objects
+        for start_field, end_field, path in [
+            (self.publishedStart, self.publishedEnd, 'datePublished'),
+            (self.dateCreatedStart, self.dateCreatedEnd, 'dateCreated'),
+            (self.dateModifiedStart, self.dateModifiedEnd, 'dateModified'),
+        ]:
+            if start_field or end_field:
+                range_filter = {'path': path}
+                if start_field:
+                    range_filter['gte'] = datetime(start_field, 1, 1)
+                if end_field:
+                    range_filter['lt'] = datetime(end_field + 1, 1, 1)
+                date_filters.append({'range': range_filter})
 
         if self.dataCoverageStart:
-            filters.append(
+            date_filters.append(
                 {'range': {'path': 'temporalCoverage.startDate', 'gte': datetime(self.dataCoverageStart, 1, 1)}}
             )
         if self.dataCoverageEnd:
-            filters.append(
+            date_filters.append(
                 {'range': {'path': 'temporalCoverage.endDate', 'lt': datetime(self.dataCoverageEnd + 1, 1, 1)}}
             )
 
+        filters.extend(date_filters)
         filters.append({'term': {'path': 'type', 'query': "Dataset"}})
 
         return filters
@@ -177,15 +142,25 @@ class SearchQuery(BaseModel):
         must = []
         if self.contentType and len(self.contentType) > 0:
             # Use exact term matching for each content type to ensure precise filtering
+            # Check both 'additionalType' (single value) and 'content_types' (array) fields.
             if len(self.contentType) == 1:
-                # Single content type - use term for exact match
-                must.append({'term': {'path': 'additionalType', 'query': self.contentType[0]}})
+                # Single content type - match either path exactly. Use compound should for OR.
+                must.append({
+                    'compound': {
+                        'should': [
+                            {'term': {'path': 'additionalType', 'query': self.contentType[0]}},
+                            {'term': {'path': 'content_types', 'query': self.contentType[0]}}
+                        ]
+                    }
+                })
             else:
-                # Multiple content types - use compound OR with exact term matches
-                # This ensures each content type is matched exactly, not partially
+                # Multiple content types - match any of the specified types appearing in either path.
+                # Create a single compound 'should' that includes term matches for each
+                # requested content type against both 'additionalType' and 'content_types'.
                 content_type_conditions = []
                 for content_type in self.contentType:
                     content_type_conditions.append({'term': {'path': 'additionalType', 'query': content_type}})
+                    content_type_conditions.append({'term': {'path': 'content_types', 'query': content_type}})
                 must.append({'compound': {'should': content_type_conditions}})
         if self.creatorName:
             must.append({'text': {'path': 'creator.name', 'query': self.creatorName}})
@@ -275,16 +250,18 @@ class SearchQuery(BaseModel):
 
         if self.paginationToken:
             search_stage["$search"]['searchAfter'] = self.paginationToken
-        
-        order = 1 if self.order == "asc" else - 1
-        
+
+        order = 1 if self.order == "asc" else -1
+
         # These sorts can occur inside the $search stage
         if self.sortBy == "name":
             search_stage["$search"]['sort'] = {"name": order}
         elif self.sortBy == "dateCreated":
             search_stage["$search"]['sort'] = {"dateCreated": order}
         elif self.sortBy == "lastModified":
-            search_stage["$search"]['sort'] = {"lastModified": order}
+            search_stage["$search"]['sort'] = {"dateModified": order}
+        elif self.sortBy == "creatorName":
+            search_stage["$search"]['sort'] = {"first_creator.name": order}
 
         stages.append(search_stage)
 
@@ -292,18 +269,10 @@ class SearchQuery(BaseModel):
             'score': {'$meta': 'searchScore'},
             'highlights': {'$meta': 'searchHighlights'}
         }}
-
-        # Sorting using an index for an array item requires a $sort stage. https://www.mongodb.com/docs/atlas/atlas-search/sort/#sort-option-limitations
-        # Important to sort before appending paginationToken
-        if self.sortBy == "creatorName":
-            stages.append({ "$sort": {"creator.0.name": order}})
-        else:
-            set_stage['$set']['paginationToken'] = { "$meta" : "searchSequenceToken" } # searchSequenceToken cannot be used with $sort stage
+        
+        set_stage['$set']['paginationToken'] = { "$meta" : "searchSequenceToken" }
 
         stages.append(set_stage)
-
-        # TODO: To exclude resource level metadata documents for now.
-        stages.append({'$match': {"dateCreated": {"$not": {"$eq": None}}}})
 
         if self.term or self.creatorName or self.contributorName or self.keyword or self.contributorName:
             # get only results which meet minimum relevance score threshold
