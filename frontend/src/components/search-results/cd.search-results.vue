@@ -15,6 +15,72 @@
         <div class="sidebar--content">
           <div class="text-h6 mb-6">Filters</div>
 
+          <!-- CREATOR/CONTRIBUTOR NAME -->
+          <cd-search
+            v-model="filter.creatorName.value"
+            :target-field="EnumHistoryTypes.CREATOR"
+            :append-search-button="false"
+            :is-eager="true"
+            @blur="pushSearchRoute"
+            @keyup.enter="pushSearchRoute"
+            @hint-selected="pushSearchRoute()"
+            @clear="
+              filter.creatorName.value = '';
+              pushSearchRoute();
+            "
+            :inputAttrs="{
+              variant: 'outlined',
+              prependInnerIcon: 'mdi-account-edit',
+              label: filter.creatorName.title,
+            }"
+            class="mt-6"
+          >
+          </cd-search>
+
+          <!-- SUBJECT/KEYWORDS -->
+          <cd-search
+            v-model="filter.subject.value"
+            :target-field="EnumHistoryTypes.SUBJECT"
+            :append-search-button="false"
+            :is-eager="true"
+            @blur="pushSearchRoute"
+            @keyup.enter="pushSearchRoute"
+            @hint-selected="pushSearchRoute()"
+            @clear="
+              filter.subject.value = '';
+              pushSearchRoute();
+            "
+            :inputAttrs="{
+              variant: 'outlined',
+              prependInnerIcon: filter.subject.icon,
+              label: filter.subject.title,
+            }"
+            class="mt-6"
+          >
+          </cd-search>
+
+          <!-- FUNDER -->
+          <cd-search
+            v-model="filter.fundingFunderName.value"
+            :target-field="EnumHistoryTypes.FUNDER"
+            :append-search-button="false"
+            :is-eager="true"
+            @blur="pushSearchRoute"
+            @keyup.enter="pushSearchRoute"
+            @hint-selected="pushSearchRoute()"
+            @clear="
+              filter.fundingFunderName.value = '';
+              pushSearchRoute();
+            "
+            :inputAttrs="{
+              variant: 'outlined',
+              prependInnerIcon: filter.fundingFunderName.icon,
+              label: 'Funder',
+            }"
+            class="my-6"
+          >
+          </cd-search>
+
           <v-expansion-panels multiple v-model="panels">
             <!-- AVAILABILITY -->
             <v-expansion-panel tile key="0">
@@ -195,94 +261,6 @@
               </v-expansion-panel-text>
             </v-expansion-panel>
           </v-expansion-panels>
-
-          <!-- SUBJECT/KEYWORDS -->
-          <cd-search
-            v-model="filter.subject.value"
-            :target-field="EnumHistoryTypes.SUBJECT"
-            :append-search-button="false"
-            :is-eager="true"
-            @blur="pushSearchRoute"
-            @keyup.enter="pushSearchRoute"
-            @hint-selected="pushSearchRoute()"
-            @clear="
-              filter.subject.value = '';
-              pushSearchRoute();
-            "
-            :inputAttrs="{
-              variant: 'outlined',
-              prependInnerIcon: filter.subject.icon,
-              label: filter.subject.title,
-            }"
-            class="mt-6"
-          >
-          </cd-search>
-
-          <!-- CREATOR NAME -->
-          <cd-search
-            v-model="filter.creatorName.value"
-            :target-field="EnumHistoryTypes.CREATOR"
-            :append-search-button="false"
-            :is-eager="true"
-            @blur="pushSearchRoute"
-            @keyup.enter="pushSearchRoute"
-            @hint-selected="pushSearchRoute()"
-            @clear="
-              filter.creatorName.value = '';
-              pushSearchRoute();
-            "
-            :inputAttrs="{
-              variant: 'outlined',
-              prependInnerIcon: 'mdi-account-edit',
-              label: filter.creatorName.title,
-            }"
-            class="mt-6"
-          >
-          </cd-search>
-
-          <!-- CONTRIBUTOR NAME -->
-          <cd-search
-            v-model="filter.contributorName.value"
-            :target-field="EnumHistoryTypes.CONTRIBUTOR"
-            :append-search-button="false"
-            :is-eager="true"
-            @blur="pushSearchRoute"
-            @keyup.enter="pushSearchRoute"
-            @hint-selected="pushSearchRoute()"
-            @clear="
-              filter.contributorName.value = '';
-              pushSearchRoute();
-            "
-            :inputAttrs="{
-              variant: 'outlined',
-              prependInnerIcon: 'mdi-account-group',
-              label: filter.contributorName.title,
-            }"
-            class="mt-6"
-          >
-          </cd-search>
-
-          <!-- FUNDER -->
-          <cd-search
-            v-model="filter.fundingFunderName.value"
-            :target-field="EnumHistoryTypes.FUNDER"
-            :append-search-button="false"
-            :is-eager="true"
-            @blur="pushSearchRoute"
-            @keyup.enter="pushSearchRoute"
-            @hint-selected="pushSearchRoute()"
-            @clear="
-              filter.fundingFunderName.value = '';
-              pushSearchRoute();
-            "
-            :inputAttrs="{
-              variant: 'outlined',
-              prependInnerIcon: filter.fundingFunderName.icon,
-              label: 'Funder',
-            }"
-            class="mt-6"
-          >
-          </cd-search>
 
           <v-btn
             :disabled="!isSomeFilterActive"
@@ -466,8 +444,18 @@
                       <v-card-text>
                         <div class="d-flex gap-2">
                           <div class="flex-grow-1">
-                            <div class="text-h6">Subject Keywords</div>
-                            <div>
+                            <p
+                              class="mb-2"
+                              v-html="
+                                highlight(
+                                  item,
+                                  'creator',
+                                  ' | ',
+                                  'creator.name',
+                                )
+                              "
+                            ></p>
+                            <div class="mb-2">
                               <v-chip
                                 v-for="keyword of item.keywords"
                                 size="small"
@@ -478,25 +466,31 @@
                                 >{{ keyword }}</v-chip
                               >
                             </div>
-                            <div class="text-h6 mt-4">Abstract</div>
                             <p
                               :class="{ 'snip-3': !item._showMore }"
                               v-html="highlight(item, 'description')"
                             ></p>
-
                             <v-btn
                               size="x-small"
                               variant="text"
                               color="primary"
+                              class="mb-2"
                               @click="item._showMore = !item._showMore"
                               >Show
                               {{ item._showMore ? "less" : "more" }}...</v-btn
                             >
+                            <p class="mb-2" v-if="item.datePublished">
+                              <b>Date published</b>: {{ item.datePublished }}
+                            </p>
+                            <p v-if="item.funding.length" class="mb-2">
+                              <b>Funded by</b>: {{ item.funding.join(" | ") }}
+                            </p>
+                            <p class="mb-2">
+                              <b>License</b>: {{ item.license }}
+                            </p>
                           </div>
 
                           <div v-if="hasSpatialFeatures(item)">
-                            <div class="text-h6">Spatial Coverage</div>
-
                             <div :id="`map-${item.id}`" class="mb-4">
                               <cd-spatial-coverage-map
                                 :loader="loader"
@@ -736,19 +730,11 @@ class CdSearchResults extends Vue {
     }),
     creatorName: new Filter({
       name: "creatorName",
-      title: "Author's name",
+      title: "Author/contributor's name",
       historyType: EnumHistoryTypes.CREATOR,
       urlLabel: EnumShortParams.AUTHOR_NAME,
       type: EnumFilterTypes.STRING,
       icon: "mdi-account-outline",
-    }),
-    contributorName: new Filter({
-      name: "contributorName",
-      title: "Contributor's name",
-      historyType: EnumHistoryTypes.CONTRIBUTOR,
-      urlLabel: EnumShortParams.CONTRIBUTOR_NAME,
-      type: EnumFilterTypes.STRING,
-      icon: "mdi-account-group-outline",
     }),
     fundingFunderName: new Filter({
       name: "fundingFunderName",
@@ -1006,16 +992,26 @@ class CdSearchResults extends Vue {
   }
 
   /** Applies highlights to a string or string[] field and returns the new content as HTML */
-  public highlight(result: IResult, path: keyof IResult) {
+  public highlight(
+    result: IResult,
+    path: keyof IResult,
+    separator?: string,
+    arrayItemPath?: string,
+  ) {
     const div = document.createElement("DIV");
     const field = result[path];
 
-    div.innerHTML = Array.isArray(field) ? field.join(", ") : field;
+    div.innerHTML = Array.isArray(field)
+      ? field.join(separator || ", ")
+      : field;
     let content = div.textContent || div.innerText || "";
 
     if (result.highlights) {
       let hits = result.highlights
-        .filter((highlight) => highlight.path === path)
+        .filter(
+          (highlight) =>
+            highlight.path === path || highlight.path === arrayItemPath,
+        )
         .map((hit) =>
           hit.texts.filter((t) => t.type === "hit").map((t) => t.value),
         )

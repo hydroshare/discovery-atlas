@@ -19,7 +19,6 @@ class SearchQuery(BaseModel):
     contentType: Optional[list[str]] = []
     providerName: Optional[str] = None
     creatorName: Optional[str] = None
-    contributorName: Optional[str] = None
     keyword: Optional[str] = None
     dataCoverageStart: Optional[int] = None
     dataCoverageEnd: Optional[int] = None
@@ -163,9 +162,7 @@ class SearchQuery(BaseModel):
                     content_type_conditions.append({'term': {'path': 'content_types', 'query': content_type}})
                 must.append({'compound': {'should': content_type_conditions}})
         if self.creatorName:
-            must.append({'text': {'path': 'creator.name', 'query': self.creatorName}})
-        if self.contributorName:
-            must.append({'text': {'path': 'contributor.name', 'query': self.contributorName}})
+            must.append({'text': {'path': ['creator.name', 'contributor.name'], 'query': self.creatorName}})
         if self.keyword:
             must.append({'text': {'path': 'keywords', 'query': self.keyword}})
         if self.providerName:
@@ -223,14 +220,15 @@ class SearchQuery(BaseModel):
                 {'autocomplete': {'query': self.term, 'path': 'description', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}},
                 {'autocomplete': {'query': self.term, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}},
                 {'autocomplete': {'query': self.term, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
+                {'autocomplete': {'query': self.term, 'path': 'contributor.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
             ]
         
         # Dedicated input filters boost the score further if matched.
-        if self.creatorName:
-            compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}})
 
-        if self.contributorName:
-            compound['should'].append({'autocomplete': {'query': self.contributorName, 'path': 'contributor.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}})
+        if self.creatorName:
+            # Matching `creator.name` has a slightly higher score than matching `contributor.name`
+            compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 6 } }}})
+            compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'contributor.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 4 } }}})
 
         if self.keyword:
             compound['should'].append( {'autocomplete': {'query': self.keyword, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}})
@@ -274,7 +272,7 @@ class SearchQuery(BaseModel):
 
         stages.append(set_stage)
 
-        if self.term or self.creatorName or self.contributorName or self.keyword or self.contributorName:
+        if self.term or self.creatorName or self.keyword:
             # get only results which meet minimum relevance score threshold
             stages.append({'$match': {'score': {'$gt': get_settings().search_relevance_score_threshold}}})
 
@@ -288,7 +286,6 @@ def get_search_query(
     contentType: list[str] = Query(default=[]),
     providerName: Optional[str] = None,
     creatorName: Optional[str] = None,
-    contributorName: Optional[str] = None,
     keyword: Optional[str] = None,
     dataCoverageStart: Optional[int] = None,
     dataCoverageEnd: Optional[int] = None,
@@ -318,7 +315,6 @@ def get_search_query(
         contentType=contentType,
         providerName=providerName,
         creatorName=creatorName,
-        contributorName=contributorName,
         keyword=keyword,
         dataCoverageStart=dataCoverageStart,
         dataCoverageEnd=dataCoverageEnd,
@@ -361,9 +357,7 @@ async def typeahead(request: Request, term: str, field: str = "term"):
     search_paths = ['name', 'description', 'keywords', "creator.name"] # default
     
     if field == "creator":
-        search_paths = ["creator.name"]
-    elif field == "contributor":
-        search_paths = ["contributor.name"]
+        search_paths = ["creator.name", "contributor.name"]
     elif field == "subject":
         search_paths = ["keywords"]
     elif field == "funder":

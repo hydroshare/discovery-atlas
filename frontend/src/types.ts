@@ -49,7 +49,6 @@ export interface ISearchParams {
   dataCoverageStart?: number;
   dataCoverageEnd?: number;
   creatorName?: string;
-  contributorName?: string;
   // ownerName?: string;
   fundingFunderName?: string;
   keyword?: string;
@@ -66,7 +65,6 @@ export interface ITypeaheadParams {
 export enum EnumShortParams {
   QUERY = "q",
   AUTHOR_NAME = "an",
-  CONTRIBUTOR_NAME = "cn",
   OWNER_NAME = "on",
   CONTENT_TYPE = "ct",
   FUNDER = "f",
@@ -80,7 +78,6 @@ export enum EnumShortParams {
 export enum EnumHistoryTypes {
   TERM = "term",
   CREATOR = "creator",
-  CONTRIBUTOR = "contributor",
   SUBJECT = "subject",
   FUNDER = "funder",
   DATABASE = "db",
