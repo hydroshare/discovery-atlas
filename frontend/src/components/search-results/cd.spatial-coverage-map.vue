@@ -7,8 +7,11 @@
 <script lang="ts">
 import { Component, Vue, Prop, Ref, toNative } from "vue-facing-decorator";
 import { Loader, LoaderOptions } from "google-maps";
+import L from "leaflet";
+import "leaflet.fullscreen";
 
-const DEFAULT_ZOOM = 5;
+const coverageMapBoxMaxZoom = 18;
+const coverageMapPointMaxZoom = 7;
 
 @Component({
   name: "cd-spatial-coverage-map",
@@ -19,155 +22,175 @@ class CdSpatialCoverageMap extends Vue {
   @Prop() loader!: Loader;
   @Prop() loaderOptions!: LoaderOptions;
 
-  @Ref("map") mapContainer;
+  @Ref("map") mapContainer!: HTMLElement;
   protected map: google.maps.Map | null = null;
   protected markers: google.maps.Marker[] = [];
   protected rectangles: google.maps.Rectangle[] = [];
   protected markerOptions: google.maps.MarkerOptions = {};
   protected rectangleOptions: google.maps.RectangleOptions = {};
 
+  protected coverageMap!: L.Map;
+  protected leafletMarkers!: L.FeatureGroup<any>;
+  protected allOverlays = [];
+
   async mounted() {
     await this.initMap();
-    this.loadDrawing();
-    if (this.map) {
-      const bounds = new google.maps.LatLngBounds();
-      this.markers.forEach((marker) => {
-        const pos = marker.getPosition() as google.maps.LatLng;
-        bounds.extend(new google.maps.LatLng(pos.lat(), pos.lng()));
-      });
-
-      this.map.fitBounds(bounds);
-
-      if (this.markers.length === 1) {
-        // For single point coverages, use default zoom
-        const map = this.map;
-        setTimeout(() => {
-          map.setZoom(DEFAULT_ZOOM);
-        }, 100);
-      }
-
-      // TODO: check if this overrides the marker bounds
-      this.rectangles.forEach((rectangle) => {
-        this.map?.fitBounds(rectangle.getBounds());
-      });
-    }
+    this.drawInitialShape();
   }
-
-  created() {}
 
   protected async initMap() {
-    const google = await this.loader.load();
+    // setup a marker group
+    this.leafletMarkers = L.featureGroup();
 
-    this.map = new google.maps.Map(this.mapContainer, {
-      center: { lat: 39.8097343, lng: -98.5556199 },
-      zoom: DEFAULT_ZOOM,
-      gestureHandling: "greedy",
+    const southWest = L.latLng(-90, -180),
+      northEast = L.latLng(90, 180);
+    const bounds = L.latLngBounds(southWest, northEast);
+
+    this.coverageMap = L.map(this.mapContainer, {
+      scrollWheelZoom: true,
+      zoomControl: false,
+      maxBounds: bounds,
+      maxBoundsViscosity: 1.0,
+      // @ts-ignore added by 'leaflet.fullscreen'
+      fullscreenControl: true,
+      fullscreenControlOptions: {
+        position: "bottomright",
+        content: `<i class="fa-solid fa-expand" aria-hidden="true"></i>`,
+      },
     });
 
-    // Icon base from: http://kml4earth.appspot.com/icons.html
-    const iconBase = "http://earth.google.com/images/kml-icons/";
-    const icons = {
-      track_directional: {
-        icon: iconBase + "track-directional/track-8.png",
+    const streets = L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        attribution:
+          'Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+        maxZoom: coverageMapBoxMaxZoom,
       },
+    );
+
+    const googleSat = L.tileLayer(
+      "http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+      {
+        maxZoom: coverageMapBoxMaxZoom,
+        subdomains: ["mt0", "mt1", "mt2", "mt3"],
+      },
+    );
+    this.coverageMap.attributionControl.setPrefix(
+      '<a href="https://leafletjs.com/" target="blank">Leaflet</a>',
+    );
+
+    const baseMaps = {
+      Streets: streets,
+      // Terrain: terrain,
+      Satelite: googleSat,
     };
 
-    this.markerOptions = {
-      ...this.markerOptions,
-      // animation: google.maps.Animation.DROP,
-      icon: {
-        url: icons.track_directional.icon,
-        anchor: new google.maps.Point(20, 35),
-        scaledSize: new google.maps.Size(40, 40),
-      },
+    const overlayMaps = {
+      "Spatial Extent": this.leafletMarkers,
     };
 
-    this.rectangleOptions = {
-      ...this.rectangleOptions,
-      fillColor: "#1976d2",
-      fillOpacity: 0.25,
-      strokeWeight: 2,
-      strokeColor: "#1976d2",
-      editable: false,
-      zIndex: 1,
-      draggable: false,
+    L.control
+      .zoom({
+        position: "bottomright",
+      })
+      .addTo(this.coverageMap);
+
+    const layerControl = L.control.layers(baseMaps, overlayMaps, {
+      position: "topright",
+    });
+    layerControl.addTo(this.coverageMap);
+
+    L.Control.RecenterButton = L.Control.extend({
+      onAdd: (_map: L.Map) => {
+        let recenterButton = L.DomUtil.create(
+          "div",
+          "leaflet-bar leaflet-control",
+        );
+        recenterButton.setAttribute("data-toggle", "tooltip");
+        recenterButton.setAttribute("data-placement", "right");
+        recenterButton.setAttribute("title", "Recenter");
+
+        recenterButton.innerHTML = `<a role="button"><i class="fa-regular fa-circle-dot" style="padding-top:3px"></i></a>`;
+
+        L.DomEvent.on(recenterButton, "click", (e) => {
+          e.stopPropagation();
+          try {
+            this.coverageMap.fitBounds(this.leafletMarkers.getBounds(), {
+              maxZoom:
+                this.feature["type"] === "GeoCoordinates"
+                  ? coverageMapPointMaxZoom
+                  : coverageMapBoxMaxZoom,
+            });
+          } catch (error) {
+            this.coverageMap.setView([30, 0], 1);
+          }
+        });
+
+        return recenterButton;
+      },
+    });
+
+    L.control.watermark = (opts) => {
+      return new L.Control.RecenterButton(opts);
     };
+
+    L.control
+      .watermark({
+        position: "bottomright",
+      })
+      .addTo(this.coverageMap);
+
+    // show the default layers at start
+    this.coverageMap.addLayer(streets);
+    this.coverageMap.addLayer(this.leafletMarkers);
   }
 
-  protected loadDrawing() {
-    if (this.feature) {
-      if (this.feature["type"] === "GeoCoordinates") {
-        const point: google.maps.ReadonlyLatLngLiteral = {
-          lat: this.feature.latitude,
-          lng: this.feature.longitude,
-        } as google.maps.ReadonlyLatLngLiteral;
-        this.loadMarkers([point]);
-      } else if (this.feature["type"] === "GeoShape") {
-        const extents = this.feature.box
-          .trim()
-          .split(" ")
-          .map((n) => +n);
-        if (extents.length === 4) {
-          const rectangle: google.maps.LatLngBoundsLiteral = {
-            north: extents[0],
-            east: extents[1],
-            south: extents[2],
-            west: extents[3],
-          } as google.maps.LatLngBoundsLiteral;
-          this.loadRectangles([rectangle]);
-        }
+  drawInitialShape() {
+    // Center the map
+    this.leafletMarkers.clearLayers();
+    if (this.feature["type"] === "GeoCoordinates") {
+      const point = new L.LatLng(this.feature.latitude, this.feature.longitude);
+      this.drawMarker(L.latLng(point));
+    } else if (this.feature["type"] === "GeoShape") {
+      const extents = this.feature.box
+        .trim()
+        .split(" ")
+        .map((n: string) => +n);
+
+      if (extents.length === 4) {
+        const rectangle = {
+          north: extents[0],
+          east: extents[1],
+          south: extents[2],
+          west: extents[3],
+        };
+        this.drawRectangle(rectangle);
       }
     }
   }
 
-  protected clearMarkers() {
-    if (this.markers.length) {
-      this.markers.forEach((m) => {
-        m.setMap(null);
-      });
-      this.markers = [];
-    }
+  drawRectangle(bounds: any) {
+    this.leafletMarkers.clearLayers();
+    let rectangle = L.rectangle([
+      [bounds.north, bounds.east],
+      [bounds.south, bounds.west],
+    ]);
+    this.leafletMarkers.addLayer(rectangle);
+
+    this.coverageMap.fitBounds(rectangle.getBounds(), {
+      maxZoom: coverageMapBoxMaxZoom,
+    });
   }
 
-  protected loadMarkers(markers: google.maps.ReadonlyLatLngLiteral[]) {
-    if (this.map) {
-      this.clearMarkers();
+  drawMarker(latLng: L.LatLng) {
+    this.leafletMarkers.clearLayers();
+    let marker = L.marker(latLng);
+    this.leafletMarkers.addLayer(marker);
 
-      markers.forEach((m) => {
-        const marker = new google.maps.Marker({
-          ...this.markerOptions,
-          position: { lat: m.lat, lng: m.lng },
-          map: this.map as google.maps.Map,
-        });
-
-        this.markers.push(marker);
-      });
-    }
-  }
-
-  protected clearRectangles() {
-    if (this.rectangles.length) {
-      this.rectangles.forEach((r) => {
-        r.setMap(null);
-      });
-      this.rectangles = [];
-    }
-  }
-
-  protected loadRectangles(rectangles: google.maps.LatLngBoundsLiteral[]) {
-    if (this.map) {
-      this.clearRectangles();
-
-      rectangles.forEach((r) => {
-        const rectangle = new google.maps.Rectangle({
-          ...this.rectangleOptions,
-          bounds: r,
-          map: this.map as google.maps.Map,
-        });
-
-        this.rectangles.push(rectangle);
-      });
-    }
+    // Center map at new marker
+    this.coverageMap.fitBounds(this.leafletMarkers.getBounds(), {
+      maxZoom: coverageMapPointMaxZoom,
+    });
   }
 }
 export default toNative(CdSpatialCoverageMap);
