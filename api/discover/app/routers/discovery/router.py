@@ -227,7 +227,8 @@ class SearchQuery(BaseModel):
 
         if self.creatorName:
             # Matching `creator.name` has a slightly higher score than matching `contributor.name`
-            compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 6 } }}})
+            compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}})
+            compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'first_creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}})
             compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'contributor.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 4 } }}})
 
         if self.keyword:
