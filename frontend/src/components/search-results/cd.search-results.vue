@@ -491,10 +491,8 @@
                           </div>
 
                           <div v-if="hasSpatialFeatures(item)">
-                            <div :id="`map-${item.id}`" class="mb-4">
+                            <div class="mb-4">
                               <cd-spatial-coverage-map
-                                :loader="loader"
-                                :loader-options="options"
                                 :feature="item.spatialCoverage"
                               />
                             </div>
@@ -574,7 +572,6 @@ import {
   INITIAL_RANGE,
 } from "@/constants";
 import { sameRouteNavigationErrorHandler } from "@/constants";
-import { Loader, LoaderOptions } from "google-maps";
 import { formatDate } from "@/util";
 import CdSpatialCoverageMap from "@/components/search-results/cd.spatial-coverage-map.vue";
 import CdSearch from "@/components/search/cd.search.vue";
@@ -593,19 +590,11 @@ import CdRangeInput from "./cd.range-input.vue";
 import { useRoute, useRouter } from "vue-router";
 import { EnumFilterTypes, Filter } from "./filter";
 
-const options: LoaderOptions = { libraries: ["drawing"] };
-const loader: Loader = new Loader(
-  import.meta.env.VITE_APP_GOOGLE_MAPS_API_KEY,
-  options,
-);
-
 @Component({
   name: "cd-search-results",
   components: { CdSearch, CdSpatialCoverageMap, CdRangeInput },
 })
 class CdSearchResults extends Vue {
-  loader = loader;
-  options = options;
   isIntersecting = false;
   searchQuery = "";
   pageNumber = 1;
@@ -1054,7 +1043,7 @@ class CdSearchResults extends Vue {
   }
 
   public hasSpatialFeatures(result: IResult): boolean {
-    return result.spatialCoverage;
+    return !!result.spatialCoverage;
   }
 }
 export default toNative(CdSearchResults);

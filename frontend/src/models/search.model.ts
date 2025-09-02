@@ -144,7 +144,7 @@ export default class Search extends Model {
       license: rawResult.document[0].license?.name || "",
       name: rawResult.document[0].name || "",
       score: rawResult.document[0].score || 0,
-      spatialCoverage: rawResult.document[0].spatialCoverage?.geo || [],
+      spatialCoverage: rawResult.document[0].spatialCoverage?.geo || null,
       url: rawResult.document[0].url || "",
       identifier: rawResult.document[0].identifier[0] || "",
       contentType: rawResult.document[0].additionalType || "",
