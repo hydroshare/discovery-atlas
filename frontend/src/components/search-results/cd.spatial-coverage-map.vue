@@ -60,7 +60,7 @@ class CdSpatialCoverageMap extends Vue {
     );
 
     const googleSat = L.tileLayer(
-      "http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+      "https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
       {
         maxZoom: coverageMapBoxMaxZoom,
         subdomains: ["mt0", "mt1", "mt2", "mt3"],

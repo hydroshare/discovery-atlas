@@ -15,28 +15,6 @@
         <div class="sidebar--content">
           <div class="text-h6 mb-6">Filters</div>
 
-          <!-- CREATOR/CONTRIBUTOR NAME -->
-          <cd-search
-            v-model="filter.creatorName.value"
-            :target-field="EnumHistoryTypes.CREATOR"
-            :append-search-button="false"
-            :is-eager="true"
-            @blur="pushSearchRoute"
-            @keyup.enter="pushSearchRoute"
-            @hint-selected="pushSearchRoute()"
-            @clear="
-              filter.creatorName.value = '';
-              pushSearchRoute();
-            "
-            :inputAttrs="{
-              variant: 'outlined',
-              prependInnerIcon: 'mdi-account-edit',
-              label: filter.creatorName.title,
-            }"
-            class="mt-6"
-          >
-          </cd-search>
-
           <!-- SUBJECT/KEYWORDS -->
           <cd-search
             v-model="filter.subject.value"
@@ -54,6 +32,28 @@
               variant: 'outlined',
               prependInnerIcon: filter.subject.icon,
               label: filter.subject.title,
+            }"
+            class="mt-6"
+          >
+          </cd-search>
+
+          <!-- CREATOR/CONTRIBUTOR NAME -->
+          <cd-search
+            v-model="filter.creatorName.value"
+            :target-field="EnumHistoryTypes.CREATOR"
+            :append-search-button="false"
+            :is-eager="true"
+            @blur="pushSearchRoute"
+            @keyup.enter="pushSearchRoute"
+            @hint-selected="pushSearchRoute()"
+            @clear="
+              filter.creatorName.value = '';
+              pushSearchRoute();
+            "
+            :inputAttrs="{
+              variant: 'outlined',
+              prependInnerIcon: 'mdi-account-edit',
+              label: filter.creatorName.title,
             }"
             class="mt-6"
           >
@@ -82,45 +82,32 @@
           </cd-search>
 
           <v-expansion-panels multiple v-model="panels">
-            <!-- AVAILABILITY -->
-            <v-expansion-panel tile key="0">
-              <v-expansion-panel-title class="py-0 px-4" color="grey-lighten-3">
+            <!-- TEMPORAL COVERAGE -->
+            <v-expansion-panel tile key="2">
+              <v-expansion-panel-title class="py-0 px-4" color="grey-lighten-4">
                 <v-switch
                   @click.stop=""
-                  v-model="filter.availability.isEnabled"
+                  v-model="filter.dataCoverage.isEnabled"
                   @update:model-value="pushSearchRoute()"
                   density="compact"
                   hide-details
                   color="primary"
                 ></v-switch>
-                <div class="ml-4 text-body-1 cursor-pointer">Availiability</div>
+                <div class="ml-4 text-body-1 cursor-pointer">
+                  Temporal coverage
+                </div>
               </v-expansion-panel-title>
 
               <v-expansion-panel-text>
-                <div
-                  v-for="(option, index) of filter.availability.options"
-                  class="d-flex justify-space-between align-center"
-                >
-                  <v-checkbox
-                    v-model="filter.availability.value"
-                    @update:model-value="
-                      onFilterControlChange(filter.availability)
-                    "
-                    color="primary"
-                    :label="option.label"
-                    :key="index"
-                    :value="option.value"
-                    hide-details
-                    density="compact"
-                  ></v-checkbox>
-                  <v-img
-                    :src="option.icon"
-                    class="img-access-icon flex-grow-0"
-                    width="25"
-                    v-tooltip="option.label"
-                    :alt="option.label"
-                  />
-                </div>
+                <cd-range-input
+                  v-model="filter.dataCoverage.value"
+                  v-model:isActive="filter.dataCoverage.isEnabled"
+                  @update:is-active="pushSearchRoute"
+                  @end="onFilterControlChange(filter.dataCoverage)"
+                  :min="filter.dataCoverage.min"
+                  :max="filter.dataCoverage.max"
+                  label="Temporal coverage"
+                />
               </v-expansion-panel-text>
             </v-expansion-panel>
 
@@ -174,32 +161,45 @@
               </v-expansion-panel-text>
             </v-expansion-panel>
 
-            <!-- TEMPORAL COVERAGE -->
-            <v-expansion-panel tile key="2">
-              <v-expansion-panel-title class="py-0 px-4" color="grey-lighten-4">
+            <!-- AVAILABILITY -->
+            <v-expansion-panel tile key="0">
+              <v-expansion-panel-title class="py-0 px-4" color="grey-lighten-3">
                 <v-switch
                   @click.stop=""
-                  v-model="filter.dataCoverage.isEnabled"
+                  v-model="filter.availability.isEnabled"
                   @update:model-value="pushSearchRoute()"
                   density="compact"
                   hide-details
                   color="primary"
                 ></v-switch>
-                <div class="ml-4 text-body-1 cursor-pointer">
-                  Temporal coverage
-                </div>
+                <div class="ml-4 text-body-1 cursor-pointer">Availiability</div>
               </v-expansion-panel-title>
 
               <v-expansion-panel-text>
-                <cd-range-input
-                  v-model="filter.dataCoverage.value"
-                  v-model:isActive="filter.dataCoverage.isEnabled"
-                  @update:is-active="pushSearchRoute"
-                  @end="onFilterControlChange(filter.dataCoverage)"
-                  :min="filter.dataCoverage.min"
-                  :max="filter.dataCoverage.max"
-                  label="Temporal coverage"
-                />
+                <div
+                  v-for="(option, index) of filter.availability.options"
+                  class="d-flex justify-space-between align-center"
+                >
+                  <v-checkbox
+                    v-model="filter.availability.value"
+                    @update:model-value="
+                      onFilterControlChange(filter.availability)
+                    "
+                    color="primary"
+                    :label="option.label"
+                    :key="index"
+                    :value="option.value"
+                    hide-details
+                    density="compact"
+                  ></v-checkbox>
+                  <v-img
+                    :src="option.icon"
+                    class="img-access-icon flex-grow-0"
+                    width="25"
+                    v-tooltip="option.label"
+                    :alt="option.label"
+                  />
+                </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
 
