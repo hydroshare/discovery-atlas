@@ -419,3 +419,22 @@ def to_associated_media(file):
 async def content_types(request: Request) -> list[str]:
     existing_content_types = await request.app.db[get_settings().mongo_database]["discovery"].find().distinct('additionalType')
     return sorted(existing_content_types, key=functools.cmp_to_key(lambda c1, c2 : c1 < c2))
+
+@router.get("/temporal-spans")
+async def temporal_spans(request: Request):
+    # dateCreated
+    stages = [
+        {
+            "$group": {
+                "_id": None, 
+                "minDateCreated": { "$min": "$dateCreated" },
+                "maxDateCreated": { "$max": "$dateCreated" },
+                "minTemporalCoverageStartDate": { "$min": "$temporalCoverage.startDate" },
+                "maxTemporalCoverageStartDate": { "$max": "$temporalCoverage.startDate" },
+                "minDatePublished": { "$min": "$datePublished" },
+                "maxDatePublished": { "$max": "$datePublished" },
+            }
+        }
+    ]
+    result = await request.app.mongodb["discovery"].aggregate(stages).to_list(None)
+    return result

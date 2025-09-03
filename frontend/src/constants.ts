@@ -24,6 +24,7 @@ export const ENDPOINTS: { [key: string]: string } = {
   typeahead: `${API_BASE}/discovery/typeahead`,
   typeaheadCreator: `${API_BASE}/discovery/typeahead_creator`,
   contentTypes: `${API_BASE}/discovery/content-types`,
+  temporalSpans: `${API_BASE}/discovery/temporal-spans`,
   // submit: `${API_BASE}/catalog/dataset`,
   // register: `${API_BASE}/catalog/repository/hydroshare`,
   // refresh: `${API_BASE}/catalog/repository/hydroshare`,

@@ -113,6 +113,8 @@ export default class Search extends Model {
   /** Fetches the list of content types and updates the state */
   public static async fetchContentTypes(): Promise<void> {
     const response: Response = await fetch(ENDPOINTS.contentTypes);
+    const test = await fetch(ENDPOINTS.temporalSpans)
+    console.log(await test.json())
 
     if (!response.ok) {
       throw new Error("Failed to fetch content types");

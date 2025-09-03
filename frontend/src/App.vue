@@ -260,8 +260,6 @@ class App extends Vue {
     document.title = APP_NAME;
     addRouteTags(this.route, this.route);
 
-    // User.fetchSchemas();
-
     this.onOpenLogInDialog = User.logInDialog$.subscribe(
       (redirectTo?: RouteLocationRaw) => {
         this.logInDialog.isActive = true;
