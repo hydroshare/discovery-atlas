@@ -25,7 +25,7 @@ cd frontend
 npm install
 npm run serve
 ```
-The frontend will be available at http://localhost:8080/
+The frontend will be available at http://localhost:5003/
 More detailed info is available in the [frontend readme](frontend/README.md)
 
 ## Formatting
