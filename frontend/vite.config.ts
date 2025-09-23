@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   return {
     root: "./",
-    base: env.VITE_APP_BASE || "/search/",
+    base: env.VITE_APP_BASE || "/",
     envDir: "../",
     resolve: {
       alias: {

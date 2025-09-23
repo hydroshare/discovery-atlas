@@ -1,4 +1,7 @@
 FROM node:23 as build-stage
+ARG VITE_APP_BASE
+ARG VITE_APP_API_URL
+ARG VITE_APP_NAME
 WORKDIR /app
 COPY ./frontend/ .
 RUN npm install
