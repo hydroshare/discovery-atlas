@@ -10,7 +10,7 @@
     >
       <v-container class="d-flex align-end full-height pa-0 align-center">
         <router-link :to="{ path: `/` }" class="logo">
-          <img :src="'img/hydroshare.png'" alt="HydroShare" />
+          <img src="/img/hydroshare.png" alt="HydroShare" />
         </router-link>
         <div class="spacer"></div>
         <div v-if="!$vuetify.display.mdAndDown" class="d-flex gap-1 ml-6">
