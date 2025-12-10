@@ -126,7 +126,7 @@ class SearchQuery(BaseModel):
             )
 
         filters.extend(date_filters)
-        filters.append({'term': {'path': 'type', 'query': "Dataset"}})
+        filters.append({'term': {'path': 'type', 'query': "ScientificDataset"}})
 
         return filters
 
