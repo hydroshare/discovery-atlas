@@ -12,3 +12,4 @@ google-cloud-logging
 pyproj
 wget
 hsclient
+motor
