@@ -3,7 +3,7 @@
   "version": "1.0.1",
   "private": true,
   "scripts": {
-    "serve": "vite --open",
+    "serve": "vite --mode=development",
     "build": "vite build",
     "lint": "eslint .",
     "build-prod": "vite build --mode=production",
