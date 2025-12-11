@@ -12,7 +12,7 @@ import vuetify from "vite-plugin-vuetify";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   return {
-    // root: "./",
+    root: "./",
     base: env.VITE_APP_BASE || "./",
     envDir: "../",
     resolve: {
