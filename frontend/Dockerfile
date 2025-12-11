@@ -5,7 +5,7 @@ COPY package.json .
 COPY package-lock.json .
 
 RUN npm install
-COPY ./frontend/ .
+COPY . .
 RUN npm run build-prod
 
 # Production layer
