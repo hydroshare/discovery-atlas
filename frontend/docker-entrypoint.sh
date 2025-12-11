@@ -41,7 +41,7 @@ for var_name in $(env | grep -E '^VITE_APP_' | cut -d '=' -f 1); do
     # Escape special characters for sed
     escaped_value=$(echo "$value" | sed 's/[\/&]/\\&/g')
     
-    echo "Processing $var_name"
+    echo "Processing $var_name with value '$value'"
     
     # Replace in files
     find "$ROOT_DIR" -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' -o -name '*.woff' \) \

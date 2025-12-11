@@ -6,15 +6,16 @@ import Components from "unplugin-vue-components/vite";
 import AutoImport from "unplugin-auto-import/vite";
 import VueMacros from "unplugin-vue-macros/vite";
 import { VitePWA } from "vite-plugin-pwa";
-// import WebfontDownload from "vite-plugin-webfont-dl";
 import vuetify from "vite-plugin-vuetify";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
+  const base = env.VITE_APP_BASE;
   return {
-    root: "./",
-    base: env.VITE_APP_BASE || "./",
-    envDir: "../",
+    // TODO: verify that these paths are correct!
+    // root: "./",
+    base: base,
+    // envDir: "./",
     resolve: {
       alias: {
         "@/": `${path.resolve(__dirname, "src")}/`,
@@ -91,6 +92,10 @@ export default defineConfig(({ mode }) => {
             },
           ],
         },
+        workbox: {
+          maximumFileSizeToCacheInBytes: 4000000,
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        }
       }),
 
       // https://github.com/feat-agency/vite-plugin-webfont-dl
