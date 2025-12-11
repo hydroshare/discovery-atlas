@@ -1,5 +1,5 @@
 import path from "node:path";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig } from "vite";
 import Vue from "@vitejs/plugin-vue";
 import generateSitemap from "vite-ssg-sitemap";
 import Components from "unplugin-vue-components/vite";
@@ -9,12 +9,10 @@ import { VitePWA } from "vite-plugin-pwa";
 import vuetify from "vite-plugin-vuetify";
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd());
-  const base = env.VITE_APP_BASE;
   return {
     // TODO: verify that these paths are correct!
     // root: "./",
-    base: base,
+    base: "/discover/",
     // envDir: "./",
     resolve: {
       alias: {

@@ -4,7 +4,6 @@ import type { UserModule } from "./types";
 
 import "./assets/css/global.scss";
 import { routes } from "./routes";
-import { APP_BASE } from "./constants";
 
 // https://github.com/antfu/vite-ssg
 export const createApp = ViteSSG(
@@ -14,7 +13,7 @@ export const createApp = ViteSSG(
     // scrollBehavior(_to, _from, _savedPosition) {
     //   document.getElementsByTagName("html")[0]?.scrollTo({ left: 0, top: 0 });
     // },
-    base: APP_BASE,
+    base: "/discover/",
   },
   (ctx) => {
     // install all modules under `modules/`
