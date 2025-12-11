@@ -1,14 +1,28 @@
-FROM node:23 as build-stage
-ARG VITE_APP_BASE
-ARG VITE_APP_API_URL
-ARG VITE_APP_NAME
+FROM node:24.3.0 AS node_build
+
 WORKDIR /app
-COPY ./frontend/ .
+COPY package.json .
+COPY package-lock.json .
+
 RUN npm install
+COPY ./frontend/ .
 RUN npm run build-prod
 
-FROM nginx:1.23.1 as production-stage
-RUN mkdir /app
-COPY --from=build-stage /app/dist /app
-COPY --from=build-stage /app/nginx.conf /etc/nginx/nginx.conf
-EXPOSE 5003
+# Production layer
+FROM caddy:2.7.6-alpine AS prod
+
+RUN apk add --no-cache bash
+
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Copy config template
+COPY Caddyfile.template /etc/caddy/Caddyfile.template
+
+# Copy source dist
+COPY --from=node_build /app/dist /srv/discover-frontend
+
+EXPOSE 80
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

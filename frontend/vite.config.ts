@@ -12,8 +12,8 @@ import vuetify from "vite-plugin-vuetify";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   return {
-    root: "./",
-    base: env.VITE_APP_BASE || "/",
+    // root: "./",
+    base: env.VITE_APP_BASE || "./",
     envDir: "../",
     resolve: {
       alias: {
@@ -122,22 +122,29 @@ export default defineConfig(({ mode }) => {
       noExternal: ["workbox-window"],
     },
 
+    build: {
+      outDir: "./dist",
+      rollupOptions: {
+        output: {
+          // Assets will use relative paths like assets/file.js
+          assetFileNames: 'assets/[name]-[hash][extname]',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          entryFileNames: 'assets/[name]-[hash].js',
+        }
+      },
+      // Ensure assets use relative paths
+      assetsDir: 'assets',
+    },
+
     server: {
-      host: true,
-      port: 5003,
-      // strictPort: true,
-      // proxy: {
-      //   "/sockjs-node": {
-      //     target: "ws://127.0.0.1:8081",
-      //     ws: true,
-      //   },
-      // },
-      // hmr: {
-      //   path: "/sockjs-node",
-      //   port: 8081,
-      //   clientPort: 443,
-      // },
-      allowedHosts: ["host.docker.internal"],
+      host: '0.0.0.0',
+      port: 5004,
+      strictPort: true,
+      hmr: {
+        host: 'localhost',
+        port: 5004, // Same as dev server
+        clientPort: 80, // Browser connects through nginx on port 80
+      },
     },
   };
 });
