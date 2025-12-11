@@ -7,7 +7,7 @@
     }
     
     # Redirect root to base path
-    redir {{ .VITE_APP_BASE }}
+    redir / {{ .VITE_APP_BASE }}
     
     # Enable gzip
     encode gzip
