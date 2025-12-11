@@ -1,14 +1,14 @@
 :80 {
-    redir /{{ .VITE_APP_BASE }} /{{ .VITE_APP_BASE }}/ 308
+    redir /discover /discover/ 308
     # Handle the base path
-    handle /{{ .VITE_APP_BASE }}* {
+    handle /discover* {
         root * /srv/discover-frontend
         try_files {path} /index.html
         file_server
     }
     
     # Redirect root to base path
-    redir / /{{ .VITE_APP_BASE }}
+    redir / /discover
     
     # Enable gzip
     encode gzip

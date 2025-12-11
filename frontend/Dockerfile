@@ -17,7 +17,7 @@ COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Copy config template
-COPY Caddyfile.template /etc/caddy/Caddyfile.template
+COPY Caddyfile /etc/caddy/Caddyfile
 
 # Copy source dist
 COPY --from=node_build /app/dist /srv/discover-frontend
