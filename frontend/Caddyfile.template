@@ -1,6 +1,6 @@
 :80 {
     # Handle the base path
-    path {{ .VITE_APP_BASE }}* {
+    handle {{ .VITE_APP_BASE }}* {
         root * /srv/discover-frontend
         try_files {path} /index.html
         file_server
