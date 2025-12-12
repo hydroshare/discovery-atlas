@@ -1,6 +1,7 @@
 :80 {
+    redir /{{ .VITE_APP_BASE }} /{{ .VITE_APP_BASE }}/ 308
     # Handle the base path
-    handle {{ .VITE_APP_BASE }}* {
+    handle /{{ .VITE_APP_BASE }}* {
         root * /srv/discover-frontend
         try_files {path} /index.html
         file_server
