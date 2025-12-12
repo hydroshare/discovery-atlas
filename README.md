@@ -1,3 +1,10 @@
+# Archived on December 12th 2025
+
+## This repository has been integrated into https://github.com/hydroshare/hydroshare
+
+[https://github.com/hydroshare/hydroshare/commit/1df83f59897eae71f9e13ccfb887a3c4814bd9cf](https://github.com/hydroshare/hydroshare/commit/1df83f59897eae71f9e13ccfb887a3c4814bd9cf)
+
+
 # HydroShare Discovery Portal with Atlas
 
 ## Getting Started
