@@ -18,7 +18,7 @@ class SchemaBaseModel(BaseModel):
         arbitrary_types_allowed = True
 
         @staticmethod
-        def schema_extra(schema: Dict[str, Any], model) -> None:
+        def json_schema_extra(schema: Dict[str, Any], model) -> None:
             # json schema modification for jsonforms
             for prop in schema.get('properties', {}).values():
                 if 'format' in prop and prop['format'] == 'uri':

@@ -2,7 +2,6 @@
   <v-app app>
     <v-app-bar
       v-if="!$route.meta.hideNavigation"
-      color="navbar"
       ref="appBar"
       id="app-bar"
       elevate-on-scroll
@@ -11,16 +10,12 @@
     >
       <v-container class="d-flex align-end full-height pa-0 align-center">
         <router-link :to="{ path: `/` }" class="logo">
-          <img :src="require('@/assets/img/logo-w.png')" alt="home" />
+          <img src="/img/hydroshare.png" alt="HydroShare" />
         </router-link>
         <div class="spacer"></div>
-        <v-card
-          class="nav-items mr-2 d-flex mr-4"
-          :elevation="2"
-          v-if="!$vuetify.breakpoint.mdAndDown"
-        >
+        <div v-if="!$vuetify.display.mdAndDown" class="d-flex gap-1 ml-6">
           <v-btn
-            color="white"
+            color="black"
             v-for="path of paths"
             :key="path.attrs.to || path.attrs.href"
             v-bind="path.attrs"
@@ -31,29 +26,34 @@
           >
             {{ path.label }}
           </v-btn>
-        </v-card>
+        </div>
 
-        <template v-if="!$vuetify.breakpoint.mdAndDown">
+        <v-spacer></v-spacer>
+
+        <template v-if="!$vuetify.display.mdAndDown">
           <v-btn
-            id="navbar-login"
             v-if="!isLoggedIn"
-            @click="openLogInDialog()"
+            id="navbar-login"
+            variant="elevated"
             rounded
-            >Log In</v-btn
+            @click="openLogInDialog()"
           >
+            Log In
+          </v-btn>
           <template v-else>
-            <v-menu bottom left offset-y>
-              <template v-slot:activator="{ on, attrs }">
+            <v-menu bottom left>
+              <template #activator="{ props }">
                 <v-btn
                   :color="
-                    $route.matched.some((p) => p.name === 'profile')
+                    route.matched.some(
+                      (p: RouteLocationMatched) => p.name === 'profile',
+                    )
                       ? 'primary'
-                      : ''
+                      : 'white'
                   "
-                  elevation="2"
+                  v-bind="props"
+                  variant="elevated"
                   rounded
-                  v-bind="attrs"
-                  v-on="on"
                 >
                   <v-icon>mdi-account-circle</v-icon>
                   <v-icon>mdi-menu-down</v-icon>
@@ -61,29 +61,22 @@
               </template>
 
               <v-list class="pa-0">
-                <!-- <v-list-item
+                <v-list-item
                   :to="{ path: '/profile' }"
-                  active-class="primary white--text"
+                  active-class="bg-primary"
+                  prepend-icon="mdi-account-circle"
                 >
-                  <v-list-item-icon class="mr-2">
-                    <v-icon>mdi-account-circle</v-icon>
-                  </v-list-item-icon>
+                  <v-list-item-title> Account & Settings </v-list-item-title>
+                </v-list-item>
 
-                  <v-list-item-content>
-                    <v-list-item-title>Account & Settings</v-list-item-title>
-                  </v-list-item-content>
-                </v-list-item> -->
+                <v-divider />
 
-                <!-- <v-divider></v-divider> -->
-
-                <v-list-item id="navbar-logout" @click="logOut()">
-                  <v-list-item-icon class="mr-2">
-                    <v-icon>mdi-logout</v-icon>
-                  </v-list-item-icon>
-
-                  <v-list-item-content>
-                    <v-list-item-title>Log Out</v-list-item-title>
-                  </v-list-item-content>
+                <v-list-item
+                  id="navbar-logout"
+                  prepend-icon="mdi-logout"
+                  @click="logOut()"
+                >
+                  <v-list-item-title>Log Out</v-list-item-title>
                 </v-list-item>
               </v-list>
             </v-menu>
@@ -91,81 +84,85 @@
         </template>
 
         <v-app-bar-nav-icon
+          v-if="$vuetify.display.mdAndDown"
           @click.stop="showMobileNavigation = true"
-          v-if="$vuetify.breakpoint.mdAndDown"
         />
       </v-container>
     </v-app-bar>
 
     <v-main app>
       <v-container id="main-container">
-        <v-sheet
-          min-height="70vh"
-          rounded
-          :elevation="$route.meta.hideNavigation || $route.meta.flat ? 0 : 2"
-        >
+        <v-sheet min-height="70vh">
           <router-view name="content" :key="$route.fullPath" />
         </v-sheet>
       </v-container>
     </v-main>
 
-    <v-footer class="mt-8 secondary lighten-4">
+    <v-footer class="mt-8 bg-grey-lighten-4">
       <router-view name="footer" />
     </v-footer>
 
+    <!-- NOTE: v-navigation-drawer is a single component for the entire app. Properties of other v-navigation-drawer instances will affect this one. -->
+
     <v-navigation-drawer
-      v-if="!$route.meta.hideNavigation || $route.meta.flat"
-      class="mobile-nav-items"
       v-model="showMobileNavigation"
+      class="mobile-nav-items"
       temporary
       app
     >
-      <v-list nav dense class="nav-items">
-        <v-list-item-group class="text-body-1">
+      <v-list nav density="compact" class="nav-items">
+        <v-list-item class="text-body-1">
           <v-list-item
             v-for="path of paths"
-            @click="showMobileNavigation = false"
             :id="`drawer-nav-${path.label.replaceAll(/[\/\s]/g, ``)}`"
             :key="path.attrs.to || path.attrs.href"
-            active-class="primary darken-3 white--text"
-            :class="path.isActive?.() ? 'primary darken-4 white--text' : ''"
             v-bind="path.attrs"
+            active-class="bg-primary"
+            :class="path.isActive && path.isActive() ? 'primary' : ''"
+            @click="showMobileNavigation = false"
           >
-            <v-icon
-              :class="path.isActive?.() ? 'white--text' : ''"
-              class="mr-2"
-              >{{ path.icon }}</v-icon
-            >
+            <v-icon class="mr-2">
+              {{ path.icon }}
+            </v-icon>
             <span>{{ path.label }}</span>
+            <v-icon v-if="path.isExternal" small class="ml-2" right>
+              mdi-open-in-new
+            </v-icon>
           </v-list-item>
-        </v-list-item-group>
-        <v-divider class="my-4"></v-divider>
+        </v-list-item>
 
-        <v-list-item-group class="text-body-1">
+        <v-divider class="my-4" />
+
+        <v-list-item class="text-body-1">
           <v-list-item
-            id="drawer-nav-login"
             v-if="!isLoggedIn"
+            id="drawer-nav-login"
             @click="
               openLogInDialog();
               showMobileNavigation = false;
             "
           >
-            <v-icon class="mr-2">mdi-login</v-icon>
+            <v-icon class="mr-2"> mdi-login </v-icon>
             <span>Log In</span>
           </v-list-item>
 
           <template v-else>
-            <!-- <v-list-item :to="{ path: '/profile' }">
-              <v-icon class="mr-2">mdi-account-circle</v-icon>
+            <v-list-item
+              :to="{ path: '/profile' }"
+              prepend-icon="mdi-account-circle"
+            >
               <span>Account & Settings</span>
-            </v-list-item> -->
+            </v-list-item>
 
-            <v-list-item id="drawer-nav-logout" @click="logOut()">
-              <v-icon class="mr-2">mdi-logout</v-icon>
+            <v-list-item
+              id="drawer-nav-logout"
+              prepend-icon="mdi-logout"
+              @click="logOut()"
+            >
               <span>Log Out</span>
             </v-list-item>
           </template>
-        </v-list-item-group>
+        </v-list-item>
       </v-list>
     </v-navigation-drawer>
 
@@ -175,7 +172,7 @@
       <cz-login
         @cancel="logInDialog.isActive = false"
         @logged-in="logInDialog.onLoggedIn"
-      ></cz-login>
+      />
     </v-dialog>
 
     <link
@@ -190,20 +187,24 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from "vue-property-decorator";
+import { Component, Vue, toNative } from "vue-facing-decorator";
 import { APP_NAME } from "./constants";
 import { CzNotifications, Notifications } from "@cznethub/cznet-vue-core";
 import { Subscription } from "rxjs";
 import User from "@/models/user.model";
 import CzLogin from "@/components/account/cz.login.vue";
-import { RawLocation } from "vue-router";
-import { setupRouteGuards } from "@/router/router";
+import { addRouteTags } from "./modules/router";
+import { useRoute, RouteLocationRaw } from "vue-router";
+import { useRouter } from "vue-router";
+import Search from "./models/search.model";
 
 @Component({
   name: "app",
   components: { CzNotifications, CzLogin },
 })
-export default class App extends Vue {
+class App extends Vue {
+  route = useRoute();
+  router = useRouter();
   protected onOpenLogInDialog!: Subscription;
   public showMobileNavigation = false;
   protected logInDialog: any & { isActive: boolean } = {
@@ -213,9 +214,29 @@ export default class App extends Vue {
   };
   public paths: any[] = [
     {
-      attrs: { to: "/search" },
-      label: "Search",
-      icon: "mdi-magnify",
+      attrs: { to: "/home" },
+      label: "Home",
+      icon: "mdi-home",
+    },
+    {
+      attrs: { to: "/my-resources" },
+      label: "My Resources",
+      icon: "mdi-home",
+    },
+    {
+      attrs: { to: "/discover" },
+      label: "Discover",
+      icon: "mdi-home",
+    },
+    {
+      attrs: { to: "/apps" },
+      label: "Apps",
+      icon: "mdi-home",
+    },
+    {
+      attrs: { to: "/help" },
+      label: "Help",
+      icon: "mdi-home",
     },
   ];
 
@@ -237,24 +258,27 @@ export default class App extends Vue {
 
   async created() {
     document.title = APP_NAME;
+    addRouteTags(this.route, this.route);
 
-    User.fetchSchemas();
-    // Guards are setup after checking authorization and loading access tokens
-    // because they depend on user logged in status
-    setupRouteGuards();
+    // User.fetchSchemas();
 
     this.onOpenLogInDialog = User.logInDialog$.subscribe(
-      (redirectTo: RawLocation | undefined) => {
+      (redirectTo?: RouteLocationRaw) => {
         this.logInDialog.isActive = true;
 
         this.logInDialog.onLoggedIn = () => {
-          if (redirectTo) {
-            this.$router.push(redirectTo);
-          }
+          if (redirectTo) this.router.push(redirectTo).catch(() => {});
+
           this.logInDialog.isActive = false;
         };
-      }
+      },
     );
+
+    try {
+      Search.fetchContentTypes();
+    } catch (e) {
+      console.error("Failed to fetch content types", e);
+    }
   }
 
   beforeDestroy() {
@@ -266,11 +290,12 @@ export default class App extends Vue {
     User.openLogInDialog();
   }
 }
+export default toNative(App);
 </script>
 
 <style lang="scss" scoped>
 .logo {
-  height: 100%;
+  height: 36px;
   cursor: pointer;
 
   img {

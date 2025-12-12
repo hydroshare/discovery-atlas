@@ -11,7 +11,7 @@ export const messages = {
         title: `Integrative Discovery Starts Here!`,
         subtitle: `Institute for Geospatial Understanding through an Integrative Discovery Environment (HydroShare)`,
         inputLabel: `Enter search terms here:`,
-        inputPlaceholder: `Search the HydroShare catalog`,
+        inputPlaceholder: `Search all Public and Discoverable Resources`,
       },
       contribute: {
         title: `Contribute Data or Research Products`,

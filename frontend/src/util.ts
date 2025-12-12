@@ -1,3 +1,5 @@
+import { ISearchParams, ITypeaheadParams } from "./types";
+
 /** Transforms the values in a dictionary into strings, and filters out falsey entries and array entries
  * Array values need to be stringified with `stringifyArrayParamValues`
  * @returns the resulting object after filter and transformation
@@ -40,7 +42,7 @@ export function getQueryString(
 export function formatDate(date: string): string {
   return new Date(date).toLocaleDateString("en-us", {
     year: "numeric",
-    month: "long",
+    month: "numeric",
     day: "numeric",
   });
 }

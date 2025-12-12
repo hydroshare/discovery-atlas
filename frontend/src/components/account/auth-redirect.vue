@@ -10,13 +10,13 @@
 
 <script lang="ts">
 import { APP_URL } from "@/constants";
-import { Component, Vue } from "vue-property-decorator";
+import { Component, Vue, toNative } from "vue-facing-decorator";
 
 @Component({
   name: "auth-redirect",
   components: {},
 })
-export default class AuthRedirect extends Vue {
+class AuthRedirect extends Vue {
   mounted() {
     // Get a dictionary of parameters in the redirect response URL
     const dict: any = {};
@@ -34,6 +34,8 @@ export default class AuthRedirect extends Vue {
     window.close();
   }
 }
+
+export default toNative(AuthRedirect);
 </script>
 
 <style lang="scss" scoped></style>

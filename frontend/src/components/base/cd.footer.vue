@@ -1,14 +1,14 @@
 <template>
   <v-container
     flat
-    class="footer text--secondary d-flex flex-column align-center full-width body-2"
+    class="footer text--secondary d-flex flex-column align-center full-width text-body-2"
   >
     <div class="d-lg-flex justify-space-between full-width">
       <div class="mb-4">
         <div class="mb-4 text-h6 mb-1">Contact Us</div>
         <!-- <p><router-link to="/contact">Contact</router-link></p> -->
         <p>
-          <a :href="'mailto:' + $t('footer.supportEmail')">Email Support</a>
+          <a href="mailto:{{$t('footer.supportEmail')}}">Email Support</a>
         </p>
         <p>
           Learn more about
@@ -16,7 +16,9 @@
         </p>
         <p>
           Visit
-          <a href="https://www.hydroshare.org/" target="_blank">hydroshare.org</a>
+          <a href="https://www.hydroshare.org/" target="_blank"
+            >hydroshare.org</a
+          >
         </p>
       </div>
 
@@ -53,15 +55,15 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from "vue-property-decorator";
+import { Component, Vue } from "vue-facing-decorator";
 
 @Component({
   name: "cd-footer",
   components: {},
 })
 export default class CdFooter extends Vue {
-  protected get version() {
-    return process.env.VUE_APP_VERSION || "0";
+  get version() {
+    return VITE_APP_VERSION;
   }
 
   protected get year() {
@@ -73,5 +75,9 @@ export default class CdFooter extends Vue {
 <style lang="scss" scoped>
 .footer {
   padding: 2rem 0;
+}
+
+p {
+  margin-bottom: 0.75rem;
 }
 </style>

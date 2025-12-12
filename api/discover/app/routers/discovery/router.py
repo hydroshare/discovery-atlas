@@ -1,17 +1,13 @@
-import gzip
 import json
 import mimetypes
-import os
-import tarfile
-import tempfile
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
+import functools
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Query
 from pydantic import BaseModel, ValidationInfo, field_validator, model_validator
-from pymongo import UpdateOne
 
-from discover.app.adapters.hydroshare import HydroshareMetadataAdapter
+from config import get_settings
 
 router = APIRouter()
 
@@ -19,33 +15,56 @@ router = APIRouter()
 class SearchQuery(BaseModel):
     term: Optional[str] = None
     sortBy: Optional[str] = None
-    reverseSort: bool = True
-    contentType: Optional[str] = None
+    order: Optional[str] = None
+    contentType: Optional[list[str]] = []
     providerName: Optional[str] = None
     creatorName: Optional[str] = None
+    keyword: Optional[str] = None
     dataCoverageStart: Optional[int] = None
     dataCoverageEnd: Optional[int] = None
     publishedStart: Optional[int] = None
     publishedEnd: Optional[int] = None
+    dateCreatedStart: Optional[int] = None
+    dateCreatedEnd: Optional[int] = None
+    dateModifiedStart: Optional[int] = None
+    dateModifiedEnd: Optional[int] = None
     hasPartName: Optional[str] = None
     isPartOfName: Optional[str] = None
     associatedMediaName: Optional[str] = None
     fundingGrantName: Optional[str] = None
     fundingFunderName: Optional[str] = None
-    creativeWorkStatus: Optional[str] = None
+    creativeWorkStatus: Optional[list[str]] = []
     pageNumber: int = 1
-    pageSize: int = 30
+    pageSize: int = 20
+    paginationToken: Optional[str]
 
     @field_validator('*')
     def empty_str_to_none(cls, v, info: ValidationInfo):
         if info.field_name == 'term' and v:
             return v.strip()
 
+        # Don't convert empty strings to None for list fields like contentType/creativeWorkStatus
+        if info.field_name in ['contentType', 'creativeWorkStatus']:
+            return v
+
         if isinstance(v, str) and v.strip() == '':
             return None
         return v
 
-    @field_validator('dataCoverageStart', 'dataCoverageEnd', 'publishedStart', 'publishedEnd')
+    @field_validator('contentType', 'creativeWorkStatus')
+    def validate_list_type_fields(cls, v):
+        """Ensure contentType/creativeWorkStatus is always a list and filter out empty strings"""
+        if v is None:
+            return []
+        if isinstance(v, str):
+            # Handle single string values
+            return [v.strip()] if v.strip() else []
+        if isinstance(v, list):
+            # Filter out empty strings from list
+            return [item.strip() for item in v if isinstance(item, str) and item.strip()]
+        return []
+
+    @field_validator('dataCoverageStart', 'dataCoverageEnd', 'publishedStart', 'publishedEnd', 'dateCreatedStart', 'dateCreatedEnd', 'dateModifiedStart', 'dateModifiedEnd')
     def validate_year(cls, v, info: ValidationInfo):
         if v is None:
             return v
@@ -62,6 +81,10 @@ class SearchQuery(BaseModel):
             raise ValueError('dataCoverageEnd must be greater or equal to dataCoverageStart')
         if self.publishedStart and self.publishedEnd and self.publishedEnd < self.publishedStart:
             raise ValueError('publishedEnd must be greater or equal to publishedStart')
+        if self.dateCreatedStart and self.dateCreatedEnd and self.dateCreatedEnd < self.dateCreatedStart:
+            raise ValueError('dateCreatedEnd must be greater or equal to dateCreatedStart')
+        if self.dateModifiedStart and self.dateModifiedEnd and self.dateModifiedEnd < self.dateModifiedStart:
+            raise ValueError('dateModifiedEnd must be greater or equal to dateModifiedStart')
 
     @field_validator('pageNumber', 'pageSize')
     def validate_page(cls, v, info: ValidationInfo):
@@ -72,33 +95,39 @@ class SearchQuery(BaseModel):
     @property
     def _filters(self):
         filters = []
-        if self.publishedStart:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'datePublished',
-                        'gte': datetime(self.publishedStart, 1, 1),
-                    },
-                }
-            )
-        if self.publishedEnd:
-            filters.append(
-                {
-                    'range': {
-                        'path': 'datePublished',
-                        'lt': datetime(self.publishedEnd + 1, 1, 1),  # +1 to include all of the publishedEnd year
-                    },
-                }
-            )
+
+        # filter out aggregation type documents - aggregation types do not have a value for dateCreated
+        filters.append({'compound': {'mustNot': [{'equals': {'path': 'dateCreated', 'value': None}}]}})
+
+        # Build all date range filters
+        date_filters = []
+
+        # Combine each date range into single filter objects
+        for start_field, end_field, path in [
+            (self.publishedStart, self.publishedEnd, 'datePublished'),
+            (self.dateCreatedStart, self.dateCreatedEnd, 'dateCreated'),
+            (self.dateModifiedStart, self.dateModifiedEnd, 'dateModified'),
+        ]:
+            if start_field or end_field:
+                range_filter = {'path': path}
+                if start_field:
+                    range_filter['gte'] = datetime(start_field, 1, 1)
+                if end_field:
+                    range_filter['lt'] = datetime(end_field + 1, 1, 1)
+                date_filters.append({'range': range_filter})
 
         if self.dataCoverageStart:
-            filters.append(
+            date_filters.append(
                 {'range': {'path': 'temporalCoverage.startDate', 'gte': datetime(self.dataCoverageStart, 1, 1)}}
             )
         if self.dataCoverageEnd:
-            filters.append(
+            date_filters.append(
                 {'range': {'path': 'temporalCoverage.endDate', 'lt': datetime(self.dataCoverageEnd + 1, 1, 1)}}
             )
+
+        filters.extend(date_filters)
+        filters.append({'term': {'path': 'type', 'query': "ScientificDataset"}})
+
         return filters
 
     @property
@@ -110,11 +139,32 @@ class SearchQuery(BaseModel):
     @property
     def _must(self):
         must = []
-        must.append({'term': {'path': 'type', 'query': "Dataset"}})
-        if self.contentType:
-            must.append({'term': {'path': '@type', 'query': self.contentType}})
+        if self.contentType and len(self.contentType) > 0:
+            # Use exact term matching for each content type to ensure precise filtering
+            # Check both 'additionalType' (single value) and 'content_types' (array) fields.
+            if len(self.contentType) == 1:
+                # Single content type - match either path exactly. Use compound should for OR.
+                must.append({
+                    'compound': {
+                        'should': [
+                            {'term': {'path': 'additionalType', 'query': self.contentType[0]}},
+                            {'term': {'path': 'content_types', 'query': self.contentType[0]}}
+                        ]
+                    }
+                })
+            else:
+                # Multiple content types - match any of the specified types appearing in either path.
+                # Create a single compound 'should' that includes term matches for each
+                # requested content type against both 'additionalType' and 'content_types'.
+                content_type_conditions = []
+                for content_type in self.contentType:
+                    content_type_conditions.append({'term': {'path': 'additionalType', 'query': content_type}})
+                    content_type_conditions.append({'term': {'path': 'content_types', 'query': content_type}})
+                must.append({'compound': {'should': content_type_conditions}})
         if self.creatorName:
-            must.append({'text': {'path': 'creator.name', 'query': self.creatorName}})
+            must.append({'text': {'path': ['creator.name', 'contributor.name'], 'query': self.creatorName}})
+        if self.keyword:
+            must.append({'text': {'path': 'keywords', 'query': self.keyword}})
         if self.providerName:
             must.append({'text': {'path': 'provider.name', 'query': self.providerName}})
         if self.hasPartName:
@@ -127,58 +177,194 @@ class SearchQuery(BaseModel):
             must.append({'text': {'path': 'funding.name', 'query': self.fundingGrantName}})
         if self.fundingFunderName:
             must.append({'text': {'path': 'funding.funder.name', 'query': self.fundingFunderName}})
-        if self.creativeWorkStatus:
-            must.append(
-                {'text': {'path': ['creativeWorkStatus', 'creativeWorkStatus.name'], 'query': self.creativeWorkStatus}}
-            )
-
+        if self.creativeWorkStatus and len(self.creativeWorkStatus) > 0:
+            # Use exact term matching for each creative work status to ensure precise filtering
+            if len(self.creativeWorkStatus) == 1:
+                # Single creative work status - use term for exact match on both possible paths
+                must.append({
+                    'compound': {
+                        'should': [
+                            {'term': {'path': 'creativeWorkStatus', 'query': self.creativeWorkStatus[0]}},
+                            {'term': {'path': 'creativeWorkStatus.name', 'query': self.creativeWorkStatus[0]}}
+                        ]
+                    }
+                })
+            else:
+                # Multiple creative work statuses - use compound OR with exact term matches
+                status_conditions = []
+                for status in self.creativeWorkStatus:
+                    status_conditions.append({
+                        'compound': {
+                            'should': [
+                                {'term': {'path': 'creativeWorkStatus', 'query': status}},
+                                {'term': {'path': 'creativeWorkStatus.name', 'query': status}}
+                            ]
+                        }
+                    })
+                must.append({'compound': {'should': status_conditions}})
         return must
+
 
     @property
     def stages(self):
-        highlightPaths = ['name', 'description', 'keywords']
+        highlightPaths = ['name', 'description', 'keywords', 'creator.name']
         stages = []
-        compound = {'filter': self._filters, 'must': self._must}
+        compound = {'filter': self._filters, 'must': self._must, 'should': []}
+
+        # The term is searched for in name, description, keywords and creator name
+        # TODO: should the term be searched for in all fields?
         if self.term:
-            compound['should'] = self._should
+            compound['should'] = [
+                # https://www.mongodb.com/docs/atlas/atlas-search/score/modify-score/#std-label-scoring-boost
+                {'autocomplete': {'query': self.term, 'path': 'name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
+                {'autocomplete': {'query': self.term, 'path': 'description', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}},
+                {'autocomplete': {'query': self.term, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}},
+                {'autocomplete': {'query': self.term, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
+                {'autocomplete': {'query': self.term, 'path': 'first_creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
+                {'autocomplete': {'query': self.term, 'path': 'contributor.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}},
+            ]
+        
+        # Dedicated input filters boost the score further if matched.
+
+        if self.creatorName:
+            # Matching `creator.name` has a slightly higher score than matching `contributor.name`
+            compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}})
+            compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'first_creator.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 5 } }}})
+            compound['should'].append({'autocomplete': {'query': self.creatorName, 'path': 'contributor.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 4 } }}})
+
+        if self.keyword:
+            compound['should'].append( {'autocomplete': {'query': self.keyword, 'path': 'keywords', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}})
+
+        if self.fundingFunderName:
+            compound['should'].append({'autocomplete': {'query': self.fundingFunderName, 'path': 'funding.funder.name', 'fuzzy': {'maxEdits': 1}, 'score': { "boost": { "value": 3 } }}})
+
         search_stage = {
             '$search': {
                 'index': 'fuzzy_search',
                 'compound': compound,
+                'highlight': {'path': highlightPaths},
+                "concurrent": True,
+                "returnStoredSource": True
             }
         }
-        if self.term:
-            search_stage["$search"]['highlight'] = {'path': highlightPaths}
+
+        if self.paginationToken:
+            search_stage["$search"]['searchAfter'] = self.paginationToken
+
+        order = 1 if self.order == "asc" else -1
+
+        # These sorts can occur inside the $search stage
+        if self.sortBy == "name":
+            search_stage["$search"]['sort'] = {"name": order}
+        elif self.sortBy == "dateCreated":
+            search_stage["$search"]['sort'] = {"dateCreated": order}
+        elif self.sortBy == "lastModified":
+            search_stage["$search"]['sort'] = {"dateModified": order}
+        elif self.sortBy == "creatorName":
+            search_stage["$search"]['sort'] = {"first_creator.name": order}
 
         stages.append(search_stage)
 
-        # sorting needs to happen before pagination
-        if self.sortBy:
-            if self.sortBy == "name":
-                self.sortBy = "name_for_sorting"
-                self.reverseSort = not self.reverseSort
-            stages.append({'$sort': {self.sortBy: -1 if self.reverseSort else 1}})
-        stages.append({'$skip': (self.pageNumber - 1) * self.pageSize})
-        stages.append({'$limit': self.pageSize})
-        # stages.append({'$unset': ['_id', '_class_id']})
-        stages.append(
-            {'$set': {'score': {'$meta': 'searchScore'}, 'highlights': {'$meta': 'searchHighlights'}}},
-        )
+        set_stage = {'$set': {
+            'score': {'$meta': 'searchScore'},
+            'highlights': {'$meta': 'searchHighlights'}
+        }}
+        
+        set_stage['$set']['paginationToken'] = { "$meta" : "searchSequenceToken" }
+
+        stages.append(set_stage)
+
+        if self.term or self.creatorName or self.keyword:
+            # get only results which meet minimum relevance score threshold
+            stages.append({'$match': {'score': {'$gt': get_settings().search_relevance_score_threshold}}})
+
         return stages
 
 
+def get_search_query(
+    term: Optional[str] = None,
+    sortBy: Optional[str] = None,
+    order: Optional[str] = None,
+    contentType: list[str] = Query(default=[]),
+    providerName: Optional[str] = None,
+    creatorName: Optional[str] = None,
+    keyword: Optional[str] = None,
+    dataCoverageStart: Optional[int] = None,
+    dataCoverageEnd: Optional[int] = None,
+    publishedStart: Optional[int] = None,
+    publishedEnd: Optional[int] = None,
+    dateCreatedStart: Optional[int] = None,
+    dateCreatedEnd: Optional[int] = None,
+    dateModifiedStart: Optional[int] = None,
+    dateModifiedEnd: Optional[int] = None,
+    hasPartName: Optional[str] = None,
+    isPartOfName: Optional[str] = None,
+    associatedMediaName: Optional[str] = None,
+    fundingGrantName: Optional[str] = None,
+    fundingFunderName: Optional[str] = None,
+    creativeWorkStatus: list[str] = Query(default=[]),
+    pageNumber: int = 1,
+    pageSize: int = 20,
+    paginationToken: Optional[str] = None
+) -> SearchQuery:
+    """Custom dependency to handle contentType/creativeWorkStatus as both single values and lists"""
+
+    # Create SearchQuery instance with processed parameters
+    return SearchQuery(
+        term=term,
+        sortBy=sortBy,
+        order=order,
+        contentType=contentType,
+        providerName=providerName,
+        creatorName=creatorName,
+        keyword=keyword,
+        dataCoverageStart=dataCoverageStart,
+        dataCoverageEnd=dataCoverageEnd,
+        publishedStart=publishedStart,
+        publishedEnd=publishedEnd,
+        dateCreatedStart=dateCreatedStart,
+        dateCreatedEnd=dateCreatedEnd,
+        dateModifiedStart=dateModifiedStart,
+        dateModifiedEnd=dateModifiedEnd,
+        hasPartName=hasPartName,
+        isPartOfName=isPartOfName,
+        associatedMediaName=associatedMediaName,
+        fundingGrantName=fundingGrantName,
+        fundingFunderName=fundingFunderName,
+        creativeWorkStatus=creativeWorkStatus,
+        pageNumber=pageNumber,
+        pageSize=pageSize,
+        paginationToken=paginationToken
+    )
+
+
 @router.get("/search")
-async def search(request: Request, search_query: SearchQuery = Depends()):
+async def search(request: Request, search_query: SearchQuery = Depends(get_search_query)):
     stages = search_query.stages
-    print(json.dumps(stages, indent=2))
-    result = await request.app.mongodb["discovery"].aggregate(stages).to_list(search_query.pageSize)
+    if not search_query.paginationToken:
+        stages.append({"$skip": (search_query.pageNumber - 1) * search_query.pageSize})   
+    stages.append({"$limit": search_query.pageSize})
+    stages.append({
+        "$lookup": {
+            "from": "discovery", "localField": "_id", "foreignField": "_id", "as": "document"
+        }
+    })
+    result = await request.app.mongodb["discovery"].aggregate(stages).to_list(None)
     json_str = json.dumps(result, default=str)
     return json.loads(json_str)
 
 
 @router.get("/typeahead")
-async def typeahead(request: Request, term: str, pageSize: int = 30):
-    search_paths = ['name', 'description', 'keywords']
+async def typeahead(request: Request, term: str, field: str = "term"):
+    search_paths = ['name', 'description', 'keywords', "creator.name"] # default
+    
+    if field == "creator":
+        search_paths = ["creator.name", "contributor.name"]
+    elif field == "subject":
+        search_paths = ["keywords"]
+    elif field == "funder":
+        search_paths = ["funding.funder.name"]
+
     should = [{'autocomplete': {'query': term, 'path': key, 'fuzzy': {'maxEdits': 1}}} for key in search_paths]
 
     stages = [
@@ -186,7 +372,9 @@ async def typeahead(request: Request, term: str, pageSize: int = 30):
             '$search': {
                 'index': 'fuzzy_search',
                 'compound': {'should': should},
-                'highlight': {'path': ['description', 'name', 'keywords']},
+                'highlight': {'path': search_paths},
+                "concurrent": True,
+                "returnStoredSource": True
             }
         },
         {
@@ -194,12 +382,21 @@ async def typeahead(request: Request, term: str, pageSize: int = 30):
                 'name': 1,
                 'description': 1,
                 'keywords': 1,
+                'creator': 1,
+                'contributor': 1,
+                'funding': 1,
                 'highlights': {'$meta': 'searchHighlights'},
                 '_id': 0,
             }
         },
     ]
-    result = await request.app.mongodb["discovery"].aggregate(stages).to_list(pageSize)
+    stages.append({"$limit": 20})
+    stages.append({
+        "$lookup": {
+            "from": "discovery", "localField": "_id", "foreignField": "_id", "as": "document"
+        }
+    })
+    result = await request.app.mongodb["discovery"].aggregate(stages).to_list(None)
     return result
 
 
@@ -217,3 +414,8 @@ def to_associated_media(file):
         "encodingFormat": mime_type,
     }
 
+
+@router.get("/content-types")
+async def content_types(request: Request) -> list[str]:
+    existing_content_types = await request.app.db[get_settings().mongo_database]["discovery"].find().distinct('additionalType')
+    return sorted(existing_content_types, key=functools.cmp_to_key(lambda c1, c2 : c1 < c2))

@@ -3,9 +3,9 @@
     <v-card-title>Log In</v-card-title>
     <v-card-text>
       <p class="text-body-1">
-        User accounts in the IGUIDE Catalog are managed using your ORCID® iD. An
-        ORCID iD is a persistent digital identifier that you own and control and
-        that distinguishes you from every other researcher.
+        User accounts in the IGUIDE Catalog are managed using your ORCID® iD.
+        An ORCID iD is a persistent digital identifier that you own and control
+        and that distinguishes you from every other researcher.
       </p>
       <p class="text-body-1">
         If you have an ORCID already, click the button below to get started. If
@@ -32,14 +32,14 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from "vue-property-decorator";
+import { Component, Vue, toNative } from "vue-facing-decorator";
 import User from "@/models/user.model";
 
 @Component({
   name: "cz-login",
   components: {},
 })
-export default class CzLogin extends Vue {
+class CzLogin extends Vue {
   protected async openLogInDialog() {
     User.logIn(this.onLoggedIn);
   }
@@ -52,10 +52,12 @@ export default class CzLogin extends Vue {
     this.$emit("logged-in");
   }
 }
+
+export default toNative(CzLogin);
 </script>
 
 <style lang="scss" scoped>
-::v-deep .v-card__text img {
+:deep(.v-card__text img) {
   max-width: 12rem;
 }
 </style>

@@ -15,7 +15,7 @@ services:
       - 443:443
     depends_on:
       - api
-      - frontend
+      # - frontend
 
   api:
     ports:
@@ -31,16 +31,16 @@ services:
     env_file:
       - .env
 
-  frontend:
-    image: iguide_frontend
-    build:
-      dockerfile: ./frontend/Dockerfile
-    volumes:
-      - ./frontend:/app
-      - ./frontend/nginx.conf:/etc/nginx/nginx.conf
-    ports:
-      - 5001:5001
-    restart: unless-stopped
-    depends_on:
-      - api
+  # frontend:
+  #   image: iguide_frontend
+  #   build:
+  #     dockerfile: ./frontend/Dockerfile
+  #   volumes:
+  #     - ./frontend:/app
+  #     - ./frontend/nginx.conf:/etc/nginx/nginx.conf
+  #   ports:
+  #     - 5001:5001
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - api
 

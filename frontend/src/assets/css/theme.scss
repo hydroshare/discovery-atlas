@@ -1,7 +1,9 @@
 // :root {
 
 // }
-@import '~@fortawesome/fontawesome-free/css/all.min.css';
+@use '@fortawesome/fontawesome-free/css/all.min.css';
+@use '@cznethub/cznet-vue-core/styles';
+@use 'leaflet/dist/leaflet.css';
 
 html {
   font-size: 16px;
@@ -31,6 +33,10 @@ section {
     height: 100%;
     min-height: 50rem;
   }
+}
+
+.v-container {
+  max-width: 1800px;
 }
 
 .banner {

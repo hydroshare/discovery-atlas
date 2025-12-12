@@ -1,155 +1,273 @@
 <template>
   <v-container
     class="cd-search-results text-body-1"
-    :class="{ 'is-small': $vuetify.breakpoint.smAndDown }"
+    :class="{ 'is-small': $vuetify.display.smAndDown }"
   >
+    <div class="d-flex align-baseline">
+      <div class="text-h5 font-weight-bold mr-2">Discover</div>
+      <div class="text-medium-emphasis text-body-1 font-italic">
+        Public resources shared with the community
+      </div>
+    </div>
+    <v-divider class="mt-2 mb-6"></v-divider>
     <div class="d-sm-block d-md-flex">
       <v-container class="sidebar flex-shrink-0">
-        <div class="text-subtitle-2 mb-6">Filter by:</div>
-        <!-- PUBLICATION YEAR -->
-        <div class="mb-4">
-          <v-checkbox
-            v-model="filter.publicationYear.isActive"
-            @change="onSearch"
-            label="Publication year"
-            dense
-            hide-details
-          />
-          <v-range-slider
-            v-model="publicationYear"
-            @change="onSliderControlChange('publicationYear')"
-            :class="{ 'grayed-out': !filter.publicationYear.isActive }"
-            :min="filter.publicationYear.min"
-            :max="filter.publicationYear.max"
-            class="mb-1"
-            hide-details
-          />
-          <div
-            class="d-flex gap-1"
-            :class="{ 'grayed-out': !filter.publicationYear.isActive }"
+        <div class="sidebar--content">
+          <div class="text-h6 mb-6">Filters</div>
+
+          <!-- SUBJECT/KEYWORDS -->
+          <cd-search
+            v-model="filter.subject.value"
+            :target-field="EnumHistoryTypes.SUBJECT"
+            :append-search-button="false"
+            :is-eager="true"
+            @blur="pushSearchRoute"
+            @keyup.enter="pushSearchRoute"
+            @hint-selected="pushSearchRoute()"
+            @clear="
+              filter.subject.value = '';
+              pushSearchRoute();
+            "
+            :inputAttrs="{
+              variant: 'outlined',
+              prependInnerIcon: filter.subject.icon,
+              label: filter.subject.title,
+            }"
+            class="mt-6"
           >
-            <v-text-field
-              @change="onSliderChange('publicationYear', 0, $event)"
-              :value="publicationYear[0]"
-              type="number"
-              small
-              dense
-              outlined
-              hide-details
-            />
-            <v-text-field
-              @change="onSliderChange('publicationYear', 1, $event)"
-              :value="publicationYear[1]"
-              type="number"
-              small
-              dense
-              outlined
-              hide-details
-            />
-          </div>
-        </div>
+          </cd-search>
 
-        <!-- DATA COVERAGE -->
-        <div class="mb-6">
-          <v-checkbox
-            v-model="filter.dataCoverage.isActive"
-            @change="onSearch"
-            dense
-            label="Data temporal coverage"
-            hide-details
-          />
-          <v-range-slider
-            v-model="dataCoverage"
-            @change="onSliderControlChange('dataCoverage')"
-            :class="{ 'grayed-out': !filter.dataCoverage.isActive }"
-            :min="filter.dataCoverage.min"
-            :max="filter.dataCoverage.max"
-            class="mb-1"
-            hide-details
-          />
-          <div
-            class="d-flex gap-1"
-            :class="{ 'grayed-out': !filter.dataCoverage.isActive }"
+          <!-- CREATOR/CONTRIBUTOR NAME -->
+          <cd-search
+            v-model="filter.creatorName.value"
+            :target-field="EnumHistoryTypes.CREATOR"
+            :append-search-button="false"
+            :is-eager="true"
+            @blur="pushSearchRoute"
+            @keyup.enter="pushSearchRoute"
+            @hint-selected="pushSearchRoute()"
+            @clear="
+              filter.creatorName.value = '';
+              pushSearchRoute();
+            "
+            :inputAttrs="{
+              variant: 'outlined',
+              prependInnerIcon: 'mdi-account-edit',
+              label: filter.creatorName.title,
+            }"
+            class="mt-6"
           >
-            <v-text-field
-              @change="onSliderChange('dataCoverage', 0, $event)"
-              :value="dataCoverage[0]"
-              type="number"
-              small
-              dense
-              outlined
-              hide-details
-            />
-            <v-text-field
-              @change="onSliderChange('dataCoverage', 1, $event)"
-              :value="dataCoverage[1]"
-              type="number"
-              small
-              dense
-              outlined
-              hide-details
-            />
-          </div>
-        </div>
+          </cd-search>
 
-        <!-- CREATOR NAME -->
-        <v-text-field
-          @change="
-            filter.creatorName = $event;
-            onSearch();
-          "
-          :value="filter.creatorName"
-          label="Author / Creator name"
-          class="mb-6"
-          hide-details
-          clearable
-          outlined
-          dense
-        />
+          <!-- FUNDER -->
+          <cd-search
+            v-model="filter.fundingFunderName.value"
+            :target-field="EnumHistoryTypes.FUNDER"
+            :append-search-button="false"
+            :is-eager="true"
+            @blur="pushSearchRoute"
+            @keyup.enter="pushSearchRoute"
+            @hint-selected="pushSearchRoute()"
+            @clear="
+              filter.fundingFunderName.value = '';
+              pushSearchRoute();
+            "
+            :inputAttrs="{
+              variant: 'outlined',
+              prependInnerIcon: filter.fundingFunderName.icon,
+              label: 'Funder',
+            }"
+            class="my-6"
+          >
+          </cd-search>
 
-        <!-- <v-select
-          :items="clusters"
-          v-model="filter.project.value"
-          @change="onSearch"
-          class="mb-6"
-          multiple
-          small-chips
-          deletable-chips
-          clearable
-          outlined
-          :label="$t('searchResults.filters.projectLabel')"
-          hide-details
-          dense
-        /> -->
+          <v-expansion-panels multiple v-model="panels">
+            <!-- TEMPORAL COVERAGE -->
+            <v-expansion-panel tile key="2">
+              <v-expansion-panel-title class="py-0 px-4" color="grey-lighten-4">
+                <v-switch
+                  @click.stop=""
+                  v-model="filter.dataCoverage.isEnabled"
+                  @update:model-value="pushSearchRoute()"
+                  density="compact"
+                  hide-details
+                  color="primary"
+                ></v-switch>
+                <div class="ml-4 text-body-1 cursor-pointer">
+                  Temporal coverage
+                </div>
+              </v-expansion-panel-title>
 
-        <v-select
-          :items="filter.repository.options"
-          v-model="filter.repository.value"
-          @change="onSearch"
-          class="mb-6"
-          clearable
-          outlined
-          label="Repository"
-          hide-details
-          dense
-        />
+              <v-expansion-panel-text>
+                <cd-range-input
+                  v-model="filter.dataCoverage.value"
+                  v-model:isActive="filter.dataCoverage.isEnabled"
+                  @update:is-active="pushSearchRoute"
+                  @end="onFilterControlChange(filter.dataCoverage)"
+                  :min="filter.dataCoverage.min"
+                  :max="filter.dataCoverage.max"
+                  label="Temporal coverage"
+                />
+              </v-expansion-panel-text>
+            </v-expansion-panel>
 
-        <!-- <div>
-          <div class="text-body-2">Content type</div>
-          <v-checkbox
-            v-for="(option, index) of filter.contentType.options"
-            v-model="filter.contentType.value"
-            @change="onSearch"
-            :key="index"
-            :label="option"
-            :value="option"
-            hide-details
-            dense
-          />
-        </div> -->
+            <!-- CONTENT TYPE -->
+            <v-expansion-panel tile key="1">
+              <v-expansion-panel-title class="py-0 px-4" color="grey-lighten-3">
+                <v-switch
+                  @click.stop=""
+                  v-model="filter.contentType.isEnabled"
+                  @update:model-value="pushSearchRoute()"
+                  density="compact"
+                  hide-details
+                  color="primary"
+                ></v-switch>
+                <div class="ml-4 text-body-1 cursor-pointer">Content type</div>
+              </v-expansion-panel-title>
 
-        <div class="text-center mt-8">
-          <v-btn @click="clearFilters" :disabled="!isSomeFilterActive"
+              <v-progress-linear
+                v-if="isFetchingContentTypes"
+                color="primary"
+                indeterminate
+              ></v-progress-linear>
+
+              <v-expansion-panel-text>
+                <div
+                  v-for="(option, index) of filter.contentType.options"
+                  class="d-flex justify-space-between align-center"
+                >
+                  <v-checkbox
+                    v-model="filter.contentType.value"
+                    @update:model-value="
+                      onFilterControlChange(filter.contentType)
+                    "
+                    :label="option.label"
+                    :key="index"
+                    :value="option.value"
+                    hide-details
+                    density="compact"
+                    color="primary"
+                  ></v-checkbox>
+
+                  <v-img
+                    v-if="option.logo"
+                    :src="option.logo"
+                    v-tooltip="option.label"
+                    :alt="option.label"
+                    width="30"
+                    max-width="30"
+                  />
+                </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
+            <!-- AVAILABILITY -->
+            <v-expansion-panel tile key="0">
+              <v-expansion-panel-title class="py-0 px-4" color="grey-lighten-3">
+                <v-switch
+                  @click.stop=""
+                  v-model="filter.availability.isEnabled"
+                  @update:model-value="pushSearchRoute()"
+                  density="compact"
+                  hide-details
+                  color="primary"
+                ></v-switch>
+                <div class="ml-4 text-body-1 cursor-pointer">Availiability</div>
+              </v-expansion-panel-title>
+
+              <v-expansion-panel-text>
+                <div
+                  v-for="(option, index) of filter.availability.options"
+                  class="d-flex justify-space-between align-center"
+                >
+                  <v-checkbox
+                    v-model="filter.availability.value"
+                    @update:model-value="
+                      onFilterControlChange(filter.availability)
+                    "
+                    color="primary"
+                    :label="option.label"
+                    :key="index"
+                    :value="option.value"
+                    hide-details
+                    density="compact"
+                  ></v-checkbox>
+                  <v-img
+                    :src="option.icon"
+                    class="img-access-icon flex-grow-0"
+                    width="25"
+                    v-tooltip="option.label"
+                    :alt="option.label"
+                  />
+                </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
+            <!-- DATE CREATED -->
+            <v-expansion-panel tile key="3">
+              <v-expansion-panel-title class="py-0 px-4" color="grey-lighten-4">
+                <v-switch
+                  @click.stop=""
+                  v-model="filter.creationDate.isEnabled"
+                  @update:model-value="pushSearchRoute()"
+                  density="compact"
+                  hide-details
+                  color="primary"
+                ></v-switch>
+
+                <div class="ml-4 text-body-1 cursor-pointer">Date created</div>
+              </v-expansion-panel-title>
+
+              <v-expansion-panel-text key="4">
+                <cd-range-input
+                  v-model="filter.creationDate.value"
+                  v-model:isActive="filter.creationDate.isEnabled"
+                  @update:is-active="pushSearchRoute"
+                  @end="onFilterControlChange(filter.creationDate)"
+                  :min="filter.creationDate.min"
+                  :max="filter.creationDate.max"
+                  label="Date created"
+                />
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
+            <!-- PUBLICATION YEAR -->
+            <v-expansion-panel tile>
+              <v-expansion-panel-title class="py-0 px-4" color="grey-lighten-4">
+                <v-switch
+                  @click.stop=""
+                  v-model="filter.publicationYear.isEnabled"
+                  @update:model-value="pushSearchRoute()"
+                  density="compact"
+                  hide-details
+                  color="primary"
+                ></v-switch>
+
+                <div class="ml-4 text-body-1 cursor-pointer">
+                  Publication year
+                </div>
+              </v-expansion-panel-title>
+
+              <v-expansion-panel-text>
+                <cd-range-input
+                  v-model="filter.publicationYear.value"
+                  v-model:isActive="filter.publicationYear.isEnabled"
+                  @update:is-active="pushSearchRoute"
+                  @end="onFilterControlChange(filter.publicationYear)"
+                  :min="filter.publicationYear.min"
+                  :max="filter.publicationYear.max"
+                  label="Publication year"
+                />
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+
+          <v-btn
+            :disabled="!isSomeFilterActive"
+            @click="clearFilters"
+            class="mt-8"
+            variant="outlined"
+            block
             >Clear Filters</v-btn
           >
         </div>
@@ -157,147 +275,270 @@
 
       <div class="results-content-wrapper">
         <v-container class="results-content">
-          <cd-search
-            v-model="searchQuery"
-            @input="onSearch"
-            @clear="
-              searchQuery = '';
-              onSearch(true);
-            "
-          />
-          <div
-            class="my-6 d-lg-flex flex-row justify-space-between gap-1 d-table"
-          >
-            <!-- <div class="d-table-row d-lg-flex align-center flex-row">
-              <small class="d-table-cell text-right text-lg-left pr-2 py-2" style="white-space: nowrap">View mode:</small>
-              <v-btn-toggle class="d-table-cell" v-model="view" dense mandatory>
-                <v-btn small><v-icon small>mdi-view-list-outline</v-icon></v-btn>
-                <v-btn small><v-icon small>mdi-map</v-icon></v-btn>
-              </v-btn-toggle>
-            </div> -->
-            <div
-              class="d-table-row d-lg-flex align-center flex-md-row flex-column gap-1"
+          <div class="d-flex align-center gap-1 mb-6">
+            <cd-search
+              v-model="searchQuery"
+              :target-field="EnumHistoryTypes.TERM"
+              :auto-focus="true"
+              @update:model-value="pushSearchRoute"
+              @clear="
+                searchQuery = '';
+                pushSearchRoute();
+              "
+              :inputAttrs="{
+                variant: 'outlined',
+                prependInnerIcon: 'mdi-magnify',
+                placeholder: $t(`home.search.inputPlaceholder`),
+              }"
+            />
+          </div>
+
+          <div v-if="isSomeFilterActive" class="d-flex gap-1 mb-4 flex-wrap">
+            <v-chip
+              v-for="f of activeFilters"
+              color="primary"
+              closable
+              label
+              @click:close="
+                f.clear();
+                pushSearchRoute();
+              "
             >
-              <small>Sort results by:</small>
-              <v-btn-toggle v-model="sort" dense :mandatory="!!searchQuery">
-                <v-btn small value="relevance">Relevance</v-btn>
-                <v-btn small value="name">Title</v-btn>
-                <v-btn small value="dateCreated">Date Created</v-btn>
-                <!-- <v-btn small value="registrationDate">Date Registered</v-btn> -->
-              </v-btn-toggle>
-            </div>
-          </div>
-          <div class="results-container mb-12">
-            <template v-if="isSearching">
-              <!-- TODO: refactor into a component -->
-              <div v-for="index in 4" :key="index" class="mb-16">
-                <div class="d-flex">
-                  <div class="flex-grow-1">
-                    <v-skeleton-loader type="heading" />
-                    <v-skeleton-loader
-                      class="mt-2"
-                      max-width="180"
-                      type="text"
-                    />
-                    <v-skeleton-loader max-width="100" type="text" />
-                  </div>
-                  <v-skeleton-loader width="100" max-height="50" type="image" />
-                </div>
-                <v-skeleton-loader class="my-2" type="paragraph" />
-                <div class="d-flex align-center my-2 gap-1">
-                  <v-skeleton-loader width="90" type="text" />
-                  <v-skeleton-loader width="90" type="text" />
-                  <v-skeleton-loader width="90" type="text" />
-                </div>
-                <v-skeleton-loader type="button" />
-              </div>
-            </template>
-            <template v-else>
-              <div
-                v-if="!results.length"
-                class="text-body-2 text--secondary text-center mt-8"
-              >
-                <div class="mb-8">No results found.</div>
-                <v-icon x-large>mdi-book-remove-multiple</v-icon>
-              </div>
-
-              <div
-                v-for="(result, index) of results"
-                class="mb-16 text-body-2"
-                :key="result.identifier"
-              >
-                <a 
-                  :href="result.url"
-                  target="_blank"
-                  class="result-title text-body-1 text-decoration-none"
-                  v-html="highlight(result, 'name')"
-                ></a>
-
-                <p
-                  ref="description"
-                  class="mt-4 mb-1"
-                  :class="{
-                    'snip-3': !result.showMore,
-                  }"
-                  v-html="
-                    `<span class='text--secondary text-body-2'>${formatDate(
-                      result.dateCreated
-                    )}</span>${result.dateCreated ? ' - ' : ''}${highlight(
-                      result,
-                      'description'
-                    )}`
+              <v-icon v-if="f.icon" class="mr-2" :icon="f.icon"></v-icon>
+              <p>
+                <span>{{ f.title }}: </span>
+                <b v-if="f.type === enumFilterTypes.RANGE">{{
+                  `${f.value[0]} to ${f.value[1]}`
+                }}</b>
+                <b
+                  v-else-if="
+                    f.type === enumFilterTypes.SELECT_MULTIPLE &&
+                    Array.isArray(f.value)
                   "
-                ></p>
-
-                <v-btn
-                  v-if="hasShowMoreButton(index)"
-                  x-small
-                  text
-                  color="primary"
-                  @click="$set(result, 'showMore', !result.showMore)"
-                  >Show {{ result.showMore ? "less" : "more" }}...</v-btn
+                  >{{
+                    f.value
+                      .map(
+                        (opt: string) =>
+                          f.options?.find((fi) => fi.value === opt)?.label,
+                      )
+                      .join(", ")
+                  }}</b
                 >
-
-                <div class="my-1" v-if="result.datePublished">
-                  Publication Date: {{ formatDate(result.datePublished) }}
-                </div>
-                <div class="my-2" v-html="highlightCreators(result)"></div>
-
-                <div
-                  class="d-flex gap-1 justify-space-between flex-wrap flex-lg-nowrap mt-2"
-                >
-                  <div>
-                    <span class="d-flex align-center mb-2"
-                      ><a :href="result.url" target="_blank">{{ result.url }}</a
-                      ><v-icon class="ml-2" small>mdi-open-in-new</v-icon></span
-                    >
-                    <div class="mb-2">
-                      <strong>Keywords: </strong
-                      ><span v-html="highlight(result, 'keywords')"></span>
-                    </div>
-                    <div class="mb-2" v-if="result.funding.length">
-                      <strong>Funded by: </strong
-                      >{{ result.funding.join(", ") }}
-                    </div>
-                    <div class="mb-2" v-if="result.license">
-                      <strong>License: </strong>{{ result.license }}
-                    </div>
-                  </div>
-
-                  <div
-                    v-if="hasSpatialFeatures(result)"
-                    :id="`map-${result.id}`"
-                  >
-                    <cd-spatial-coverage-map
-                      :loader="loader"
-                      :loader-options="options"
-                      :feature="result.spatialCoverage"
-                    />
-                  </div>
-                </div>
-              </div>
-            </template>
+                <b v-else-if="Array.isArray(f.value)">{{
+                  f.value.join(", ")
+                }}</b>
+                <b v-else>{{ f.value }}</b>
+              </p>
+            </v-chip>
           </div>
+
+          <div class="results-container mb-12">
+            <v-data-table-virtual
+              :headers="headers.filter((header) => header.visible)"
+              :items="results"
+              class="elevation-2 text-body-1"
+              hover
+              show-expand
+              density="compact"
+              :loading="isSearching"
+              v-model:sort-by="sortBy"
+              @update:sort-by="onSortChange()"
+              :cell-props="
+                (item) => ({
+                  class: { isSorted: item.column.key === sortBy[0]?.key },
+                })
+              "
+            >
+              <template #no-data>
+                <div class="text-body-2 text-center py-4">
+                  <v-empty-state
+                    text="No results found."
+                    icon="mdi-text-box-remove"
+                  />
+                </div>
+              </template>
+              <template #loading>
+                <div class="text-subtitle-2 text-center">
+                  Loading results...
+                </div>
+              </template>
+              <template #item.icons="{ item }">
+                <div class="d-flex align-center justify-start">
+                  <v-img
+                    class="mr-2"
+                    v-if="contentTypeLogos[item.contentType]"
+                    :src="contentTypeLogos[item.contentType]"
+                    v-tooltip="contentTypeLabels[item.contentType]"
+                    width="30"
+                    max-width="30"
+                  />
+                  <v-img
+                    v-if="item.sharingStatus === 'Public'"
+                    class="img-access-icon flex-grow-0"
+                    width="25"
+                    :src="sharingStatusIcons.PUBLIC"
+                    v-tooltip="'Public'"
+                    alt="Public"
+                  />
+                  <v-img
+                    v-else-if="item.sharingStatus === 'Private'"
+                    class="img-access-icon flex-grow-0"
+                    width="25"
+                    :src="sharingStatusIcons.PRIVATE"
+                    v-tooltip="'Private'"
+                    alt="Private"
+                  />
+                  <v-img
+                    v-else-if="item.sharingStatus === 'Discoverable'"
+                    class="img-access-icon flex-grow-0"
+                    width="25"
+                    :src="sharingStatusIcons.DISCOVERABLE"
+                    v-tooltip="'Discoverable'"
+                    alt="Discoverable"
+                  />
+                  <v-img
+                    v-else-if="item.sharingStatus === 'Published'"
+                    class="img-access-icon flex-grow-0"
+                    width="25"
+                    :src="sharingStatusIcons.PUBLISHED"
+                    v-tooltip="'Published'"
+                    alt="Published"
+                  />
+                  <v-img
+                    v-if="hasSpatialFeatures(item)"
+                    class="img-access-icon flex-grow-0"
+                    width="25"
+                    :src="sharingStatusIcons.SPATIAL"
+                    v-tooltip="'Contains Spatial Coverage'"
+                    alt="Contains Spatial Coverage"
+                  />
+                </div>
+              </template>
+              <template #item.name="{ item }">
+                <a
+                  v-if="item.identifier"
+                  class="text-decoration-none text-body-1"
+                  :href="item.identifier"
+                  target="_blank"
+                  v-html="highlight(item, 'name')"
+                ></a>
+                <p v-else v-html="highlight(item, 'name')"></p>
+              </template>
+              <template #item.creatorName="{ item }">
+                <div v-html="highlightCreators(item)"></div>
+              </template>
+              <template #item.dateCreated="{ item }">
+                <span v-if="item.dateCreated">{{
+                  formatDate(item.dateCreated)
+                }}</span>
+              </template>
+              <template #item.lastModified="{ item }">
+                <span v-if="item.lastModified">{{
+                  formatDate(item.lastModified)
+                }}</span>
+              </template>
+              <template #expanded-row="{ item }">
+                <div class="d-table-row">
+                  <td class="d-table-cell" colspan="6">
+                    <v-card class="mx-4" flat>
+                      <v-card-text>
+                        <div class="d-flex gap-2">
+                          <div class="flex-grow-1">
+                            <p
+                              class="mb-2"
+                              v-html="
+                                highlight(
+                                  item,
+                                  'creator',
+                                  ' | ',
+                                  'creator.name',
+                                )
+                              "
+                            ></p>
+                            <div class="mb-2">
+                              <v-chip
+                                v-for="keyword of item.keywords"
+                                size="small"
+                                style="margin: 0.25rem"
+                                variant="outlined"
+                                class="bg-grey-lighten-5"
+                                border="thin"
+                                >{{ keyword }}</v-chip
+                              >
+                            </div>
+                            <p
+                              :class="{ 'snip-3': !item._showMore }"
+                              v-html="highlight(item, 'description')"
+                            ></p>
+                            <v-btn
+                              size="x-small"
+                              variant="text"
+                              color="primary"
+                              class="mb-2"
+                              @click="item._showMore = !item._showMore"
+                              >Show
+                              {{ item._showMore ? "less" : "more" }}...</v-btn
+                            >
+                            <p class="mb-2" v-if="item.datePublished">
+                              <b>Date published</b>: {{ item.datePublished }}
+                            </p>
+                            <p v-if="item.funding.length" class="mb-2">
+                              <b>Funded by</b>: {{ item.funding.join(" | ") }}
+                            </p>
+                            <p class="mb-2">
+                              <b>License</b>: {{ item.license }}
+                            </p>
+                          </div>
+
+                          <div v-if="hasSpatialFeatures(item)">
+                            <div class="mb-4">
+                              <cd-spatial-coverage-map
+                                :feature="item.spatialCoverage"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </v-card-text>
+                    </v-card>
+                    <v-divider></v-divider>
+                  </td>
+                </div>
+              </template>
+              <template
+                #item.data-table-expand="{
+                  internalItem,
+                  isExpanded,
+                  toggleExpand,
+                }"
+              >
+                <v-btn
+                  :append-icon="
+                    isExpanded(internalItem)
+                      ? 'mdi-chevron-up'
+                      : 'mdi-chevron-down'
+                  "
+                  :text="isExpanded(internalItem) ? 'Collapse' : 'Show more'"
+                  class="text-none"
+                  color="medium-emphasis"
+                  size="small"
+                  variant="text"
+                  border
+                  slim
+                  @click="toggleExpand(internalItem)"
+                ></v-btn>
+              </template>
+
+              <!-- <div class="my-1" v-if="result.datePublished">
+                  Publication Date: {{ formatDate(result.datePublished) }}
+                </div> -->
+            </v-data-table-virtual>
+            <v-progress-linear
+              v-if="isFetchingMore"
+              color="primary"
+              indeterminate
+            ></v-progress-linear>
+          </div>
+
           <div
             v-if="results.length"
             v-intersect="{
@@ -305,15 +546,12 @@
               options: { threshold: [0, 0.5, 1.0] },
             }"
           ></div>
-          <div
-            v-if="isFetchingMore"
-            class="text-subtitle-2 text--secondary text-center"
-          >
-            Loading more results...
+          <div v-if="isFetchingMore" class="text-subtitle-2 text-center">
+            <p>Loading more results...</p>
           </div>
           <div
             v-if="results.length && !hasMore"
-            class="text-subtitle-2 text--secondary text-center"
+            class="text-subtitle-2 text-center"
           >
             End of results.
           </div>
@@ -324,9 +562,16 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue, Watch } from "vue-property-decorator";
+import { Component, Vue, Watch, toNative } from "vue-facing-decorator";
+import {
+  MIN_YEAR,
+  MAX_YEAR,
+  contentTypeLogos,
+  sharingStatusIcons,
+  contentTypeLabels,
+  INITIAL_RANGE,
+} from "@/constants";
 import { sameRouteNavigationErrorHandler } from "@/constants";
-import { Loader, LoaderOptions } from "google-maps";
 import { formatDate } from "@/util";
 import CdSpatialCoverageMap from "@/components/search-results/cd.spatial-coverage-map.vue";
 import CdSearch from "@/components/search/cd.search.vue";
@@ -334,224 +579,301 @@ import SearchResults from "@/models/search-results.model";
 import SearchHistory from "@/models/search-history.model";
 import Search from "@/models/search.model";
 import { Notifications } from "@cznethub/cznet-vue-core";
-import { MIN_YEAR, MAX_YEAR } from "@/constants";
-
-const options: LoaderOptions = { libraries: ["drawing"] };
-const loader: Loader = new Loader(
-  process.env.VUE_APP_GOOGLE_MAPS_API_KEY,
-  options
-);
+import {
+  ISearchParams,
+  IResult,
+  EnumShortParams,
+  EnumDictionary,
+  EnumHistoryTypes,
+} from "@/types";
+import CdRangeInput from "./cd.range-input.vue";
+import { useRoute, useRouter } from "vue-router";
+import { EnumFilterTypes, Filter } from "./filter";
 
 @Component({
   name: "cd-search-results",
-  components: { CdSearch, CdSpatialCoverageMap },
+  components: { CdSearch, CdSpatialCoverageMap, CdRangeInput },
 })
-export default class CdSearchResults extends Vue {
-  public loader = loader;
-  public options = options;
-  public isIntersecting = false;
-  public searchQuery = "";
-  public pageNumber = 1;
-  public pageSize = 15;
-  public hasMore = true;
-  public isSearching = false;
-  public isFetchingMore = false;
-  public sort: "name" | "dateCreated" | "relevance" | "registrationDate" =
-    "relevance";
-  public preferredSort: "name" | "dateCreated" | "relevance" = "relevance";
+class CdSearchResults extends Vue {
+  isIntersecting = false;
+  searchQuery = "";
+  pageNumber = 1;
+  pageSize = 20;
+  hasMore = true;
+  isSearching = false;
+  isFetchingMore = false;
+  sortBy: { key: string; order?: boolean | "asc" | "desc" }[] = [];
   // public view: 'list' | 'map' = 'list'
-  public formatDate = formatDate;
-  protected descriptionRefs: any[] = [];
-  public filter: ISearchFilter = {
-    publicationYear: {
+  filter: { [key: string]: Filter } = {
+    availability: new Filter({
+      name: "creativeWorkStatus",
+      title: "Availability",
+      icon: "mdi-lock-outline",
+      urlLabel: EnumShortParams.AVAILABILITY,
+      type: EnumFilterTypes.SELECT_MULTIPLE,
+      options: [
+        {
+          value: "Discoverable",
+          label: "Discoverable",
+          icon: sharingStatusIcons.DISCOVERABLE,
+        },
+        {
+          value: "Public",
+          label: "Public",
+          icon: sharingStatusIcons.PUBLIC,
+        },
+        {
+          value: "Published",
+          label: "Published",
+          icon: sharingStatusIcons.PUBLISHED,
+        },
+      ],
+    }),
+    contentType: new Filter({
+      name: "contentType",
+      title: "Content type",
+      icon: "mdi-card-multiple-outline",
+      urlLabel: EnumShortParams.CONTENT_TYPE,
+      type: EnumFilterTypes.SELECT_MULTIPLE,
+      options: this._contentTypes.map((contentType: string) => {
+        return {
+          value: contentType,
+          label: contentTypeLabels[contentType],
+          logo: contentTypeLogos[contentType],
+        };
+      }),
+    }),
+    dataCoverage: new Filter({
+      name: "dataCoverage",
+      title: "Temporal coverage",
+      icon: "mdi-calendar-range",
+      urlLabel: EnumShortParams.DATA_COVERAGE,
+      type: EnumFilterTypes.RANGE,
       min: MIN_YEAR,
       max: MAX_YEAR,
-      isActive: false,
-    },
-    dataCoverage: {
+      getter: () => {
+        return SearchResults.$state.dataCoverage;
+      },
+      setter: (range: [number, number]) => {
+        SearchResults.commit((state) => {
+          state.dataCoverage = range;
+        });
+      },
+      clear: () => {
+        SearchResults.commit((state) => {
+          state.dataCoverage = INITIAL_RANGE;
+        });
+      },
+    }),
+    creationDate: new Filter({
+      name: "dateCreated",
+      title: "Date created",
+      icon: "mdi-calendar-plus",
+      urlLabel: EnumShortParams.CREATION_DATE,
+      type: EnumFilterTypes.RANGE,
       min: MIN_YEAR,
       max: MAX_YEAR,
-      isActive: false,
-    },
-    // project: {
-    //   // Options are loaded via api during app `created` hook.
-    //   value: [],
-    // },
-    // contentType: {
-    //   options: ["Dataset", "Notebook/Code", "Software"],
-    //   value: [],
-    // },
-    repository: {
-      options: ["HydroShare"],
-      value: "",
-    },
-    creatorName: "",
+      getter: () => {
+        return SearchResults.$state.creationDate;
+      },
+      setter: (range: [number, number]) => {
+        SearchResults.commit((state) => {
+          state.creationDate = range;
+        });
+      },
+      clear: () => {
+        SearchResults.commit((state) => {
+          state.creationDate = INITIAL_RANGE;
+        });
+      },
+    }),
+    publicationYear: new Filter({
+      name: "published",
+      title: "Publication year",
+      icon: "mdi-calendar-star-four-points",
+      urlLabel: EnumShortParams.PUBLICATION_YEAR,
+      type: EnumFilterTypes.RANGE,
+      min: MIN_YEAR,
+      max: MAX_YEAR,
+      getter: () => {
+        return SearchResults.$state.publicationYear;
+      },
+      setter: (range: [number, number]) => {
+        SearchResults.commit((state) => {
+          state.publicationYear = range;
+        });
+      },
+      clear: () => {
+        SearchResults.commit((state) => {
+          state.publicationYear = INITIAL_RANGE;
+        });
+      },
+    }),
+    subject: new Filter({
+      title: "Subject keywords",
+      name: "keyword",
+      historyType: EnumHistoryTypes.SUBJECT,
+      urlLabel: EnumShortParams.SUBJECT,
+      type: EnumFilterTypes.STRING,
+      icon: "mdi-pen",
+    }),
+    creatorName: new Filter({
+      name: "creatorName",
+      title: "Author/contributor's name",
+      historyType: EnumHistoryTypes.CREATOR,
+      urlLabel: EnumShortParams.AUTHOR_NAME,
+      type: EnumFilterTypes.STRING,
+      icon: "mdi-account-outline",
+    }),
+    fundingFunderName: new Filter({
+      name: "fundingFunderName",
+      title: "Funder",
+      historyType: EnumHistoryTypes.FUNDER,
+      urlLabel: EnumShortParams.FUNDER,
+      type: EnumFilterTypes.STRING,
+      icon: "mdi-domain",
+    }),
   };
+  contentTypeLogos = contentTypeLogos;
+  sharingStatusIcons = sharingStatusIcons;
+  contentTypeLabels = contentTypeLabels;
+  enumFilterTypes = EnumFilterTypes;
 
-  public get publicationYear() {
-    return SearchResults.$state.publicationYear;
+  headers = reactive([
+    {
+      title: "",
+      key: "icons",
+      visible: true,
+      width: 60,
+      minWidth: 60,
+      sortable: false,
+    },
+    {
+      title: "Title",
+      key: "name",
+      visible: true,
+      minWidth: 200,
+      sortRaw: () => 1,
+    },
+    {
+      title: "First Author",
+      key: "creatorName",
+      visible: true,
+      minWidth: 200,
+      sortRaw: () => 1,
+    },
+    {
+      title: "Date Created",
+      key: "dateCreated",
+      visible: true,
+      minWidth: 200,
+      sortRaw: () => 1,
+    },
+    {
+      title: "Last Modified",
+      key: "lastModified",
+      visible: true,
+      minWidth: 200,
+      sortRaw: () => 1,
+    },
+  ]);
+
+  formatDate = formatDate;
+  route = useRoute();
+  router = useRouter();
+  EnumHistoryTypes = EnumHistoryTypes;
+
+  public get registeredFilters() {
+    return Object.values(this.filter);
   }
 
-  public set publicationYear(range: [number, number]) {
-    // TODO: validate input
+  public get activeFilters() {
+    return this.registeredFilters.filter((f) => f.isActive());
+  }
+
+  public get panels() {
+    return SearchResults.$state.panels;
+  }
+
+  public set panels(range: number[]) {
     SearchResults.commit((state) => {
-      state.publicationYear = range;
+      state.panels = range;
     });
   }
 
-  public get dataCoverage() {
-    return SearchResults.$state.dataCoverage;
-  }
-
-  public set dataCoverage(range: [number, number]) {
-    // TODO: validate input
-    SearchResults.commit((state) => {
-      state.dataCoverage = range;
-    });
-  }
-
-  public get results() {
+  public get results(): IResult[] {
     return Search.$state.results;
   }
 
-  public get clusters() {
-    return Search.$state.clusters;
+  public get isSomeFilterActive() {
+    return this.registeredFilters.some((f) => f.isActive());
+  }
+
+  @Watch("_contentTypes")
+  onContentTypesChanged() {
+    this.filter.contentType.options = this._contentTypes.map(
+      (contentType: string) => {
+        return {
+          value: contentType,
+          label: contentTypeLabels[contentType],
+          logo: contentTypeLogos[contentType],
+        };
+      },
+    );
+  }
+
+  private get _contentTypes() {
+    return Search.$state.contentTypes;
+  }
+
+  public get isFetchingContentTypes() {
+    return Search.$state.isFetchingContentTypes;
   }
 
   /** Search query parameters */
-  public get queryParams(): ISearchParams {
-    const queryParams: ISearchParams = {
+  get queryParams(): ISearchParams {
+    let params: ISearchParams = {
       term: this.searchQuery,
       pageSize: this.pageSize,
       pageNumber: this.pageNumber,
     };
 
-    // PUBLICATION YEAR
-    if (this.filter.publicationYear.isActive) {
-      this.$set(queryParams, "publishedStart", this.publicationYear[0]);
-      this.$set(queryParams, "publishedEnd", this.publicationYear[1]);
+    if (this.sortBy[0]) {
+      params.sortBy = this.sortBy[0].key;
+      params.order = this.sortBy[0].order as "asc" | "desc";
     }
 
-    // DATA COVERAGE
-    if (this.filter.dataCoverage.isActive) {
-      this.$set(queryParams, "dataCoverageStart", this.dataCoverage[0]);
-      this.$set(queryParams, "dataCoverageEnd", this.dataCoverage[1]);
-    }
+    this.registeredFilters.forEach((f) => {
+      params = { ...params, ...f.getQueryParams() };
+    });
 
-    // CREATOR NAME
-    if (this.filter.creatorName) {
-      queryParams.creatorName = this.filter.creatorName;
-    }
-
-    // REPOSITORY
-    if (this.filter.repository.value) {
-      queryParams.providerName = this.filter.repository.value;
-    }
-
-    // PROJECT
-    // if (this.filter.project.value.length) {
-    //   queryParams.clusters = this.filter.project.value;
-    // }
-
-    // CONTENT TYPE
-    // if (this.filter.contentType.value?.length) {
-    //   queryParams.contentType = this.filter.contentType.value;
-    // }
-
-    // SORT BY
-    if (this.sort) {
-      // @ts-ignore
-      queryParams.sortBy = this.sort;
-    }
-
-    return queryParams;
-  }
-
-  public get isSomeFilterActive() {
-    return (
-      this.filter.publicationYear.isActive ||
-      this.filter.publicationYear.isActive ||
-      this.filter.dataCoverage.isActive ||
-      this.filter.repository.value ||
-      // this.filter.project.value ||
-      // this.filter.contentType.value.length ||
-      this.filter.creatorName
-    );
-  }
-
-  protected displayRefs() {
-    this.descriptionRefs = (this.$refs["description"] as any[]) || [];
+    return params;
   }
 
   /** Route query parameters with short keys. These are parameters needed to replicate a search. */
-  public get routeParams() {
-    return {
-      q: this.searchQuery,
-      cn: this.filter.creatorName || undefined,
-      r: this.filter.repository.value || undefined,
-      py: this.filter.publicationYear.isActive
-        ? this.publicationYear.map((n) => n.toString()) || undefined
-        : undefined,
-      dc: this.filter.dataCoverage.isActive
-        ? this.dataCoverage.map((n) => n.toString()) || undefined
-        : undefined,
-      // p: this.filter.project.value || undefined,
-      // ct: this.filter.contentType.value || undefined,
-      s: this.sort || undefined,
+  public get routeParams(): EnumDictionary<EnumShortParams, any> {
+    let params: { [key: string]: string } = {
+      [EnumShortParams.QUERY]: this.searchQuery,
     };
-  }
 
-  protected hasShowMoreButton(index) {
-    const lines = this._countLines(this.descriptionRefs[index]);
-    return lines >= 3;
-  }
-
-  private _countLines(el) {
-    if (el && document.defaultView) {
-      const divHeight = el.offsetHeight;
-      const lineHeight = +document.defaultView
-        .getComputedStyle(el, null)
-        .lineHeight.replace("px", "");
-      return divHeight / lineHeight;
+    if (this.sortBy[0]) {
+      params.sortBy = this.sortBy[0].key;
+      params.order = this.sortBy[0].order as string;
     }
 
-    return 0;
+    this.registeredFilters.forEach((f) => {
+      params = { ...params, ...f.getRouteParams() };
+    });
+    return params as EnumDictionary<EnumShortParams, any>;
   }
 
   created() {
     this._loadRouteParams();
-
-    this.sort = this.$route.query["q"]
-      ? this.preferredSort
-      : "registrationDate";
-
-    this.onSearch();
+    this._onSearch();
   }
 
-  /** @param path: the filter object to act on.
-   *  @param index: 0 or 1 (min or max).
-   *  @param value: the value to set.
-   */
-  public onSliderChange(path: string, index: 0 | 1, value: number) {
-    // Conditional to prevent change event triggers on focus change where the value has not changed.
-    if (this[path][index] !== value) {
-      this.$set(this.filter[path], "isActive", true);
-      this.$set(this[path], index, value);
-      this.onSearch();
-    }
-  }
-
-  public onSliderControlChange(path: any) {
-    this.$set(this.filter[path], "isActive", true);
-    this.onSearch();
-  }
-
-  protected goToDataset(id: string) {
-    this.$router.push({ path: `dataset/${id}` });
-  }
-
-  public onIntersect(entries, observer) {
-    this.isIntersecting = entries[0].intersectionRatio >= 0.5;
+  public onIntersect(_isIntersecting: boolean, entries: any[], _observer: any) {
+    this.isIntersecting = entries[0]?.intersectionRatio >= 0.5;
     if (
       this.isIntersecting &&
       this.results.length &&
@@ -563,78 +885,36 @@ export default class CdSearchResults extends Vue {
     }
   }
 
-  public clearFilters() {
-    const wasSomeActive = this.isSomeFilterActive;
-
-    this.filter.publicationYear.isActive = false;
-    this.filter.dataCoverage.isActive = false;
-    // this.filter.contentType.value = [];
-    // this.filter.project.value = [];
-    this.filter.repository.value = "";
-    this.filter.creatorName = "";
-
-    if (wasSomeActive) {
-      this.onSearch();
+  logHistory() {
+    if (this.queryParams.term) {
+      SearchHistory.log(this.queryParams.term, EnumHistoryTypes.TERM);
     }
+
+    this.registeredFilters.forEach((f) => {
+      if (f.historyType && f.value?.trim()) {
+        SearchHistory.log(f.value?.trim(), f.historyType);
+      }
+    });
   }
 
-  @Watch("sort")
-  public onSortChange(newSort, _oldSort) {
-    if (newSort !== "registrationDate") {
-      this.preferredSort = newSort;
+  /** Pushes the desired search to the router, which will reload the route with the new query parameters */
+  pushSearchRoute(value?: string) {
+    if (value && this.route.name !== "search") {
+      this.router
+        .push({ name: "search", query: { q: value } })
+        .catch(sameRouteNavigationErrorHandler);
     }
-    this.onSearch();
-  }
-
-  // protected async onSearchAll() {
-  //   this.hasMore = true;
-  //   this.isSearching = true;
-  //   this.pageNumber = 1;
-
-  //   try {
-  //     this.hasMore = await Search.search({
-  //       ...this.queryParams,
-  //     });
-  //   } catch (e) {
-  //     console.log(e);
-  //     Search.commit((state) => {
-  //       state.results = [];
-  //     });
-  //     Notifications.toast({
-  //       message: `Failed to perform search`,
-  //       type: "error",
-  //     });
-  //   }
-  //   this.isSearching = false;
-  //   this.$nextTick(() => {
-  //     this.displayRefs();
-  //   });
-  // }
-
-  public async onSearch(useAllResultsSort?: boolean) {
-    if (!this.searchQuery && useAllResultsSort) {
-      this.sort = "registrationDate";
-    } else if (this.searchQuery && this.sort === "registrationDate") {
-      this.sort = this.preferredSort; // TODO: use previous sort
-    }
-
-    this.hasMore = true;
-    this.isSearching = true;
-    this.pageNumber = 1;
 
     try {
-      // set the parameters on the route
-      this.$router
+      this.logHistory();
+
+      // This will reload the component because the router-view in the App component has `:key="route.fullPath"`
+      this.router
         .push({
           name: "search",
           query: this.routeParams,
         })
         .catch(sameRouteNavigationErrorHandler);
-
-      if (this.queryParams.term) {
-        SearchHistory.log(this.queryParams.term);
-      }
-      this.hasMore = await Search.search(this.queryParams);
     } catch (e) {
       console.log(e);
       Search.commit((state) => {
@@ -645,10 +925,15 @@ export default class CdSearchResults extends Vue {
         type: "error",
       });
     }
+  }
+
+  async _onSearch() {
+    this.hasMore = true;
+    this.isSearching = true;
+    this.pageNumber = 1;
+
+    this.hasMore = !!(await Search.search(this.queryParams));
     this.isSearching = false;
-    this.$nextTick(() => {
-      this.displayRefs();
-    });
   }
 
   /** Get the next page of results. */
@@ -663,12 +948,19 @@ export default class CdSearchResults extends Vue {
     this.isFetchingMore = false;
   }
 
+  public onFilterControlChange(filter: Filter) {
+    filter.isEnabled = true;
+
+    this.pushSearchRoute();
+  }
+
   public highlightCreators(result: IResult) {
     if (!result.creator) {
       return "";
     }
     const div = document.createElement("DIV");
-    div.innerHTML = result.creator.join(", ");
+    // div.innerHTML = result.creator.join(", ");
+    div.innerHTML = result.creator[0] || "";
 
     let content = div.textContent || div.innerText || "";
 
@@ -676,7 +968,7 @@ export default class CdSearchResults extends Vue {
       let hits = result.highlights
         .filter((highlight) => highlight.path === "creator.name")
         .map((hit) =>
-          hit.texts.filter((t) => t.type === "hit").map((t) => t.value)
+          hit.texts.filter((t) => t.type === "hit").map((t) => t.value),
         )
         .flat();
 
@@ -685,23 +977,32 @@ export default class CdSearchResults extends Vue {
         content = content.replaceAll(hit, `<mark>${hit}</mark>`);
       });
     }
-
     return content;
   }
 
   /** Applies highlights to a string or string[] field and returns the new content as HTML */
-  public highlight(result: IResult, path: string) {
+  public highlight(
+    result: IResult,
+    path: keyof IResult,
+    separator?: string,
+    arrayItemPath?: string,
+  ) {
     const div = document.createElement("DIV");
-    div.innerHTML = Array.isArray(result[path])
-      ? result[path].join(", ")
-      : result[path];
+    const field = result[path];
+
+    div.innerHTML = Array.isArray(field)
+      ? field.join(separator || ", ")
+      : field;
     let content = div.textContent || div.innerText || "";
 
     if (result.highlights) {
       let hits = result.highlights
-        .filter((highlight) => highlight.path === path)
+        .filter(
+          (highlight) =>
+            highlight.path === path || highlight.path === arrayItemPath,
+        )
         .map((hit) =>
-          hit.texts.filter((t) => t.type === "hit").map((t) => t.value)
+          hit.texts.filter((t) => t.type === "hit").map((t) => t.value),
         )
         .flat();
 
@@ -714,63 +1015,66 @@ export default class CdSearchResults extends Vue {
     return content;
   }
 
+  public clearFilters() {
+    const wasSomeActive = this.isSomeFilterActive;
+    this.registeredFilters.forEach((f) => f.clear());
+
+    if (wasSomeActive) {
+      this.pushSearchRoute();
+    }
+  }
+
+  public onSortChange() {
+    this.pushSearchRoute();
+  }
+
   /** Load route query parameters into component values. */
   private _loadRouteParams() {
-    // SEARCH QUERY
-    this.searchQuery = this.$route.query["q"] as string;
-
-    // CREATOR NAME
-    this.filter.creatorName = (this.$route.query["cn"] as string) || "";
-
-    // REPOSITORY
-    this.filter.repository.value = (this.$route.query["r"] as string) || "";
-
-    // CONTENT TYPE
-    // this.filter.contentType.value = (this.$route.query["ct"] as string[]) || [];
-
-    // PROJECT
-    // this.filter.project.value = this.$route.query["p"]
-    //   ? ([this.$route.query["p"]].flat() as string[])
-    //   : [];
-
-    // PUBLICATION YEAR
-    if (this.$route.query["py"]) {
-      this.filter.publicationYear.isActive = true;
-      this.publicationYear =
-        ((this.$route.query["py"] as [string, string])?.map((n) => +n) as [
-          number,
-          number
-        ]) || this.publicationYear;
+    this.searchQuery = this.$route.query[EnumShortParams.QUERY] as string;
+    if (this.$route.query.sortBy) {
+      this.sortBy = [
+        {
+          key: this.$route.query.sortBy as string,
+          order: this.$route.query.order === "desc" ? "desc" : "asc",
+        },
+      ];
     }
-
-    // DATA COVERAGE
-    if (this.$route.query["dc"]) {
-      this.filter.dataCoverage.isActive = true;
-      this.dataCoverage =
-        ((this.$route.query["dc"] as [string, string])?.map((n) => +n) as [
-          number,
-          number
-        ]) || this.dataCoverage;
-    }
-
-    // SORT
-    if (this.$route.query["s"]) {
-      this.sort =
-        (this.$route.query["s"] as
-          | "name"
-          | "dateCreated"
-          | "relevance"
-          | "registrationDate") || this.sort;
-    }
+    this.registeredFilters.forEach((f) => f.loadFromRoute(this.$route.query));
   }
 
   public hasSpatialFeatures(result: IResult): boolean {
-    return result.spatialCoverage?.["@type"];
+    return !!result.spatialCoverage;
   }
 }
+export default toNative(CdSearchResults);
 </script>
 
 <style lang="scss" scoped>
+.v-expansion-panel--active,
+.v-expansion-panel--active:not(:first-child),
+.v-expansion-panel--active + .v-expansion-panel {
+  margin-top: 1px;
+}
+
+:deep(.v-table .v-data-table__tr:nth-child(even) td) {
+  background: #f7f7f7;
+  &.isSorted {
+    background: #eee !important;
+  }
+}
+
+:deep(.v-table) {
+  .v-data-table__th--sorted,
+  .v-data-table__td.isSorted {
+    background: #f7f7f7 !important;
+  }
+}
+
+:deep(.v-table tr.v-data-table__tr td) {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
 .sidebar {
   width: 20rem;
 }
@@ -785,11 +1089,11 @@ export default class CdSearchResults extends Vue {
   flex: 1 1 auto;
 }
 
-.results-content {
-  min-width: 0; // https://stackoverflow.com/a/66689926/3288102
-  max-width: 70rem;
-  margin: unset;
-}
+// .results-content {
+//   min-width: 0; // https://stackoverflow.com/a/66689926/3288102
+//   max-width: 70rem;
+//   margin: unset;
+// }
 
 .results-container {
   * {
@@ -808,7 +1112,7 @@ export default class CdSearchResults extends Vue {
   opacity: 0.55;
 }
 
-::v-deep .v-select--chips .v-select__selections .v-chip--select:first-child {
+:deep(.v-select--chips .v-select__selections .v-chip--select:first-child) {
   margin-top: 1rem;
 }
 </style>
